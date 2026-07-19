@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { createRound, tryMove } from '../../src/engine/round'
+import { createRound, tryMove, effectiveKind } from '../../src/engine/round'
 import type { Level } from '../../src/engine/types'
 
 export function lvl(rows: string[], yellowBudget = 1, lives = 3): Level {
@@ -52,4 +52,30 @@ test('exit is locked until all mids are on the path', () => {
   tryMove(s, { r: 0, c: 2 }) // mid
   tryMove(s, { r: 1, c: 2 })
   expect(tryMove(s, { r: 2, c: 2 })).toEqual({ kind: 'won' })
+})
+
+test('entering a yellow spends budget and activates it (door semantics)', () => {
+  const s = createRound(lvl(['Sy.', '...', 'y.E'], 2))
+  const res = tryMove(s, { r: 0, c: 1 })
+  expect(res).toEqual({ kind: 'activated', flipped: false })
+  expect(s.yellowsUsed).toBe(1)
+  expect(s.activatedYellows).toEqual([{ r: 0, c: 1 }])
+})
+
+test('spending the last budget point flips remaining yellows to red', () => {
+  const s = createRound(lvl(['Sy.', '...', 'y.E'], 1))
+  const res = tryMove(s, { r: 0, c: 1 })
+  expect(res).toEqual({ kind: 'activated', flipped: true })
+  expect(s.flipped).toBe(true)
+  expect(effectiveKind(s, { r: 2, c: 0 })).toBe('red')     // unspent yellow is now red
+  expect(effectiveKind(s, { r: 0, c: 1 })).toBe('empty')   // opened door stays safe
+})
+
+test('activation is permanent across retraction; re-entry is free', () => {
+  const s = createRound(lvl(['Sy.', '...', 'y.E'], 2))
+  tryMove(s, { r: 0, c: 1 })            // activate
+  tryMove(s, { r: 0, c: 0 })            // retract off it
+  expect(s.yellowsUsed).toBe(1)          // budget NOT refunded
+  expect(tryMove(s, { r: 0, c: 1 })).toEqual({ kind: 'moved' }) // re-enter open door: free
+  expect(s.yellowsUsed).toBe(1)
 })

@@ -25,6 +25,8 @@ export function solve(input: LevelInput, opts: SolveOptions = {}): SolveResult {
   const start = findCells(cells, 'start')[0]
   const exit = findCells(cells, 'exit')[0]
   if (!start || !exit) return { kind: 'unsolvable' }
+  const startPos = start
+  const exitPos = exit
   const mids = findCells(cells, 'mid')
   const preActivated = new Set((opts.preActivated ?? []).map((p) => key(p.r, p.c)))
   const allowed = opts.allowedYellows ? new Set(opts.allowedYellows.map((p) => key(p.r, p.c))) : null
@@ -71,7 +73,7 @@ export function solve(input: LevelInput, opts: SolveOptions = {}): SolveResult {
         q.push({ r, c })
       }
     }
-    const exitOk = seen[key(exit.r, exit.c)] === true || (from.r === exit.r && from.c === exit.c)
+    const exitOk = seen[key(exitPos.r, exitPos.c)] === true || (from.r === exitPos.r && from.c === exitPos.c)
     const midsOk = mids.every((m) => visited[key(m.r, m.c)] || seen[key(m.r, m.c)])
     return { exitOk, midsOk, grays }
   }
@@ -80,7 +82,7 @@ export function solve(input: LevelInput, opts: SolveOptions = {}): SolveResult {
     if (timedOut) return
     if (++nodes > nodeBudget) { timedOut = true; return }
 
-    if (tip.r === exit.r && tip.c === exit.c) {
+    if (tip.r === exitPos.r && tip.c === exitPos.c) {
       if (mids.every((m) => visited[key(m.r, m.c)]) && better(graysSoFar, yellowsSpent, path.length)) {
         best = { grays: graysSoFar, yellowsSpent, path: path.map((p) => ({ ...p })) }
       }
@@ -91,7 +93,7 @@ export function solve(input: LevelInput, opts: SolveOptions = {}): SolveResult {
     if (!reach.exitOk || !reach.midsOk) return
     if (objective === 'coverage' && best && graysSoFar + reach.grays < best.grays) return
     if (objective === 'shortest' && best) {
-      const manhattan = Math.abs(tip.r - exit.r) + Math.abs(tip.c - exit.c)
+      const manhattan = Math.abs(tip.r - exitPos.r) + Math.abs(tip.c - exitPos.c)
       if (path.length + manhattan >= best.path.length) return
     }
 

@@ -7,7 +7,7 @@
     "noUncheckedIndexedAccess": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "node"]
   },
   "include": ["src", "tests", "scripts"]
 }

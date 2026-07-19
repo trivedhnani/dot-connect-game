@@ -1,16 +1,12 @@
 import Phaser from 'phaser'
 import PlayScene from './scenes/PlayScene'
 import GradeOverlay from './scenes/GradeOverlay'
-import levels from '../levels/levels.json'
-
-const first = (levels as { campaign: unknown[] }).campaign[0]
+import LevelSelect from './scenes/LevelSelect'
 
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#101018',
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
-  scene: [PlayScene, GradeOverlay],
+  scene: [LevelSelect, PlayScene, GradeOverlay],  // first scene auto-starts
 })
-  .scene.start('play', { level: first })
-// NOTE: Task 13 replaces this direct start with the LevelSelect scene.

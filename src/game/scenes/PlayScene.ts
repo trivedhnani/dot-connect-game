@@ -27,6 +27,9 @@ export default class PlayScene extends Phaser.Scene {
     this.benchmarkShown = false
     this.g = this.add.graphics()
     this.hud = this.add.text(12, 10, '', { fontSize: '16px', color: '#cfd3e0', fontFamily: 'monospace' })
+    this.add.text(this.scale.width - 12, 10, '≡', { fontSize: '24px', color: '#cfd3e0' })
+      .setOrigin(1, 0).setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => { this.scene.stop('grade'); this.scene.start('select') })
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.dragging) this.onPointer(p) })
     this.input.on('pointerup', () => { this.dragging = false })

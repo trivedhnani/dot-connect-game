@@ -57,7 +57,7 @@ Design rationale (decided after explicit comparison): coverage ("more grays = be
    - Mid/late tiers: ≥1 decoy yellow (looks right, caps achievable grade).
    - Optimal path passes red-adjacent several times (danger on the good line, not beside it).
    - Near-optimal alternatives within a few % exist (ambiguity creates deliberation).
-4. **Difficulty scoring** (obvious-vs-optimal gap, solution count, size, yellow tightness) buckets survivors into the ramp.
+4. **Difficulty scoring** (obvious-vs-optimal gap, solution count, size, yellow tightness) buckets survivors into the ramp. Planned enhancement (post-v1 or during tuning): a scripted **naive bot** (greedy gray-chaser, shallow lookahead) plays each candidate; the naive-grade-vs-optimal gap is a deterministic proxy for the human discovery gap. (LLM players were considered and rejected: the exact solver already beats them at solving, and LM-judges are unreliable at rating fun; humans remain the fun arbiter.)
 5. **Human curation:** generator emits ~300 ranked survivors; we play top candidates in a dev-build level-browser page and cherry-pick the shipped 60. Taste is the last filter.
 6. **Playtest loop:** analytics (grade distributions, fail counts per level) drive reordering/replacement from the survivor pool. Levels are JSON; swapping is editing data.
 

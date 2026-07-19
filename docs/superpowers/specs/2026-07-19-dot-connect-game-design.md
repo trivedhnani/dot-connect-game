@@ -17,11 +17,11 @@ Business context: first title of a games-with-ads venture (see `Mac Projects/mob
 
 **Drawing.** Press the start green, drag orthogonally cell-to-cell. A cell may be visited once; the trail is a wall. Dragging backward retracts the path (free, unlimited). Lifting the finger pauses; resume from the tip. "Stuck" never ends a round — retract and reroute.
 
-**Yellows (the signature mechanic).**
-- Every level REQUIRES activating at least one yellow: by construction, no route to the exit exists that avoids all yellows.
-- Per-level activation budget (e.g., 4 yellows on board, max 2 activations). Activation = tap while passing through; permanent, no undo. Activated yellow = green checkpoint.
-- When the last allowed activation is spent, **all remaining yellows flip to red** — animated clearly, with an "activations left" counter always visible. Choosing WHICH yellows to spend is the core strategic decision; flipping poisons routes you were saving.
-- Unactivated (still-safe) yellows may be passed through freely before the flip.
+**Yellows (the signature mechanic) — door semantics.**
+- Yellows are doors: **entering a yellow cell IS the activation** — it spends one budget point automatically. You cannot enter a yellow with zero budget remaining. No separate tap.
+- Every level REQUIRES ≥1 activation by construction: no route to the exit avoids all yellow cells, so "which yellows do I choose" is purely a routing decision.
+- Per-level activation budget (e.g., 4 yellows on board, max 2 activations). Activation is permanent (survives rewind and retraction); an activated yellow is a green checkpoint, freely re-enterable.
+- When the last allowed activation is spent, **all remaining yellows flip to red** — animated clearly, with an "activations left" counter always visible. Flipping poisons routes you were saving.
 
 **Reds & lives.** Touching red: lose 1 life, path rewinds to the last activated checkpoint on the current path (else the start); grays collected past that point return to the board. Lives are per-level (default 3), reset each level. Lives exhausted → full level reset. No timers, no global lives pool, no waiting.
 
@@ -65,7 +65,7 @@ Design rationale (decided after explicit comparison): coverage ("more grays = be
 
 - **1–10 (5×5):** teach by design, no text tutorials. Obvious paths; reds appear ~level 3 (peripheral); yellows ~level 6 (obviously valuable); the yellow→red flip demonstrated ~level 8 on a board where it is safe but visible.
 - **11–30 (6×6–7×7):** reds form walls/chokepoints; gray clusters get red guards; yellow budget tightens.
-- **31–50 (7×7–8×8):** ordered mid-greens force zigzags; trail-as-wall self-blocking becomes the puzzle.
+- **31–50 (7×7–8×8):** mid-green must-visit checkpoints (all must be on the path before the exit opens) force zigzags; trail-as-wall self-blocking becomes the puzzle.
 - **51–60 (9×9):** decoy yellows + flip management + gray-order planning combined.
 - **Daily level:** date-seeded pick from a pregenerated pool; same engine, zero marginal content cost; primary comeback-tomorrow hook.
 - Post-v1 mechanic drip (explicitly out of v1): blinking reds, moving reds, portals, keys/locks.

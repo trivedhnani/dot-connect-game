@@ -18,6 +18,8 @@ const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]] as const
 const key = (r: number, c: number) => r * 16 + c
 
 export function solve(input: LevelInput, opts: SolveOptions = {}): SolveResult {
+  // key() packs r*16+c — row/col values above 15 would alias; reject early.
+  if (input.size > 15) return { kind: 'unsolvable' }
   const { size } = input
   const cells = parseRows(input.rows)
   const nodeBudget = opts.nodeBudget ?? 500_000
@@ -52,6 +54,7 @@ export function solve(input: LevelInput, opts: SolveOptions = {}): SolveResult {
 
   // BFS over unvisited cells from `from`: can we still reach exit + all unvisited mids,
   // and how many grays are still collectible? Used for pruning.
+  // Yellow-passability is deliberately optimistic (over-estimates reachable grays), keeping the coverage prune admissible.
   function reachability(from: Pos, budgetLeft: number): { exitOk: boolean; midsOk: boolean; grays: number } {
     const seen: boolean[] = new Array(size * 16).fill(false)
     const q: Pos[] = [from]

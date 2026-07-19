@@ -33,7 +33,9 @@ export default class PlayScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.dragging) this.onPointer(p) })
     this.input.on('pointerup', () => { this.dragging = false })
-    this.scale.on('resize', () => this.redraw())
+    const handler = () => this.redraw()
+    this.scale.on('resize', handler)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off('resize', handler))
     track('level_start', { id: this.level.id })
     this.redraw()
   }
@@ -65,9 +67,9 @@ export default class PlayScene extends Phaser.Scene {
     if (samePos(pos, tip)) return
     const res = tryMove(this.round, pos)
     if (res.kind === 'activated' && res.flipped) this.flipFx()
-    if (res.kind === 'red-hit') this.cameras.main.shake(150, 0.01)
+    if (res.kind === 'red-hit') { this.cameras.main.shake(150, 0.01); this.dragging = false }
     if (res.kind === 'won') this.onWon()
-    if (res.kind === 'lost') this.onLost()
+    if (res.kind === 'lost') { this.onLost(); this.dragging = false }
     if (res.kind !== 'rejected') this.redraw()
   }
 

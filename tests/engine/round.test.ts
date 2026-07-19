@@ -79,3 +79,36 @@ test('activation is permanent across retraction; re-entry is free', () => {
   expect(tryMove(s, { r: 0, c: 1 })).toEqual({ kind: 'moved' }) // re-enter open door: free
   expect(s.yellowsUsed).toBe(1)
 })
+
+test('touching red costs a life and rewinds to start when no checkpoint', () => {
+  const s = createRound(lvl(['S.r', '...', 'y.E'], 1))
+  tryMove(s, { r: 0, c: 1 })
+  const res = tryMove(s, { r: 0, c: 2 })
+  expect(res).toEqual({ kind: 'red-hit', rewoundTo: { r: 0, c: 0 }, livesLeft: 2 })
+  expect(s.path).toEqual([{ r: 0, c: 0 }])
+  expect(s.redHits).toBe(1)
+})
+
+test('rewind returns to the last activated yellow on the path', () => {
+  const s = createRound(lvl(['Sy.', '..r', '..E'], 2))
+  tryMove(s, { r: 0, c: 1 })   // activate yellow checkpoint
+  tryMove(s, { r: 0, c: 2 })
+  const res = tryMove(s, { r: 1, c: 2 })  // red
+  expect(res).toEqual({ kind: 'red-hit', rewoundTo: { r: 0, c: 1 }, livesLeft: 2 })
+  expect(s.path).toEqual([{ r: 0, c: 0 }, { r: 0, c: 1 }])
+})
+
+test('cells freed by rewind can be re-entered', () => {
+  const s = createRound(lvl(['S.r', '...', '..E'], 1))
+  tryMove(s, { r: 0, c: 1 })
+  tryMove(s, { r: 0, c: 2 })            // red-hit, rewound to start
+  expect(tryMove(s, { r: 0, c: 1 })).toEqual({ kind: 'moved' })
+})
+
+test('losing the last life loses the round', () => {
+  const s = createRound(lvl(['Sr', 'yE'], 1, 1))
+  const res = tryMove(s, { r: 0, c: 1 })
+  expect(res).toEqual({ kind: 'lost' })
+  expect(s.status).toBe('lost')
+  expect(tryMove(s, { r: 1, c: 0 })).toEqual({ kind: 'rejected', reason: 'not-playing' })
+})

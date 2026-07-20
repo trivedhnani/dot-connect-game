@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { TEXT_RESOLUTION } from '../ui'
 
 export default class HowToPlay extends Phaser.Scene {
   constructor() { super('help') }
@@ -14,6 +15,7 @@ export default class HowToPlay extends Phaser.Scene {
     this.add.text(cx, 40, 'HOW TO PLAY', {
       fontSize: '22px',
       color: '#4be18a',
+      resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5)
 
     // Rules text block
@@ -23,18 +25,15 @@ export default class HowToPlay extends Phaser.Scene {
       'Drag to draw; drag backwards to undo. Undoing is always free.',
       '',
       'Gray dots are optional loot — cover as many as you can.',
+      'Heads up: covering EVERY gray is usually impossible — reds, doors and your own line get in the way. Chase the best haul, not perfection.',
       '',
-      'YELLOW dots are DOORS: entering one spends a door point,',
-      'permanently. When your LAST door point is spent, all remaining',
-      'yellows turn RED.',
+      'YELLOW dots are DOORS: entering one spends a door point, permanently. When your LAST door point is spent, all remaining yellows turn RED.',
       '',
-      'RED dots cost a life and rewind you to your last door (or the',
-      'start). Out of lives = the level resets.',
+      'RED dots cost a life and rewind you to your last door (or the start). Out of lives = the level resets.',
       '',
       'CYAN dots (later levels) must all be visited before the exit opens.',
       '',
-      'SCORING: graded against the best-known path — more grays, fewer',
-      'doors, no red hits, shorter line.',
+      'SCORING: graded against the best-known path — more grays, fewer doors, no red hits, shorter line.',
       '  60% * unlocks the next level',
       '  80% **',
       '  95% *** + the best path revealed free',
@@ -46,6 +45,7 @@ export default class HowToPlay extends Phaser.Scene {
       fontFamily: 'monospace',
       color: '#cfd3e0',
       wordWrap: { width: wrapWidth },
+      resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5, 0)
 
     // "Got it — play!" button
@@ -54,6 +54,7 @@ export default class HowToPlay extends Phaser.Scene {
       color: '#ffffff',
       backgroundColor: '#26263a',
       padding: { x: 12, y: 6 },
+      resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.scene.start(data.next === 'play' ? 'play' : 'select', data.nextData ?? {}))
   }

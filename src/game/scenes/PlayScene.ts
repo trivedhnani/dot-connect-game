@@ -4,6 +4,7 @@ import { gradeRound } from '../../engine/grading'
 import { samePos } from '../../engine/board'
 import type { Level, Pos, RoundState } from '../../engine/types'
 import { track } from '../analytics'
+import { TEXT_RESOLUTION } from '../ui'
 
 const C = {
   cellBg: 0x1b1b26, empty: 0x33334a, gray: 0x9aa0b4, yellow: 0xe8c34a,
@@ -26,12 +27,20 @@ export default class PlayScene extends Phaser.Scene {
     this.round = createRound(this.level)
     this.benchmarkShown = false
     this.g = this.add.graphics()
-    this.hud = this.add.text(12, 10, '', { fontSize: '16px', color: '#cfd3e0', fontFamily: 'monospace' })
+    const hudFont = this.scale.width < 520 ? 12 : 16
+    this.hud = this.add.text(12, 10, '', {
+      fontSize: `${hudFont}px`,
+      color: '#cfd3e0',
+      fontFamily: 'monospace',
+      wordWrap: { width: this.scale.width - 130 },
+      resolution: TEXT_RESOLUTION,
+    })
     this.add.text(this.scale.width - 10, 8, '⌂ levels', {
-      fontSize: '16px',
+      fontSize: `${hudFont}px`,
       color: '#cfd3e0',
       backgroundColor: '#26263a',
       padding: { x: 10, y: 6 },
+      resolution: TEXT_RESOLUTION,
     }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => { this.scene.stop('grade'); this.scene.start('select') })
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })

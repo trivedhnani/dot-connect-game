@@ -4,6 +4,7 @@ import type { Level } from '../../engine/types'
 import { loadProgress, recordResult, spendRevealToken } from '../storage'
 import { track } from '../analytics'
 import type PlayScene from './PlayScene'
+import { TEXT_RESOLUTION } from '../ui'
 
 export default class GradeOverlay extends Phaser.Scene {
   constructor() { super('grade') }
@@ -16,16 +17,16 @@ export default class GradeOverlay extends Phaser.Scene {
 
     this.add.rectangle(cx, height / 2, Math.min(360, width - 24), 260, 0x14141f, 0.95)
       .setStrokeStyle(2, 0x4be18a)
-    this.add.text(cx, height / 2 - 100, `${grade.percent}%`, { fontSize: '48px', color: '#4be18a' }).setOrigin(0.5)
+    this.add.text(cx, height / 2 - 100, `${grade.percent}%`, { fontSize: '48px', color: '#4be18a', resolution: TEXT_RESOLUTION }).setOrigin(0.5)
     this.add.text(cx, height / 2 - 55, '★'.repeat(grade.stars) + '☆'.repeat(3 - grade.stars),
-      { fontSize: '32px', color: '#e8c34a' }).setOrigin(0.5)
-    this.add.text(cx, height / 2 - 18, grade.hint, { fontSize: '14px', color: '#cfd3e0' }).setOrigin(0.5)
+      { fontSize: '32px', color: '#e8c34a', resolution: TEXT_RESOLUTION }).setOrigin(0.5)
+    this.add.text(cx, height / 2 - 18, grade.hint, { fontSize: '14px', color: '#cfd3e0', resolution: TEXT_RESOLUTION }).setOrigin(0.5)
 
     const freeReveal = grade.percent >= 95
     const tokens = loadProgress().revealTokens
     const revealLabel = freeReveal ? 'Reveal best path (free)' : `Reveal best path (${tokens} left)`
     const mkButton = (y: number, label: string, onClick: () => void) =>
-      this.add.text(cx, y, label, { fontSize: '18px', color: '#ffffff', backgroundColor: '#26263a', padding: { x: 12, y: 6 } })
+      this.add.text(cx, y, label, { fontSize: '18px', color: '#ffffff', backgroundColor: '#26263a', padding: { x: 12, y: 6 }, resolution: TEXT_RESOLUTION })
         .setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerdown', onClick)
 
     mkButton(height / 2 + 20, revealLabel, () => {

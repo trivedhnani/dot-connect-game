@@ -23,6 +23,12 @@ export default class LevelSelect extends Phaser.Scene {
       .setOrigin(0.5).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => { track('daily_start', { id: dailyLevel.id }); this.scene.start('play', { level: dailyLevel }) })
 
+    this.add.text(width - 12, 8, '? How to play', {
+      fontSize: '14px', color: '#4be18a',
+      backgroundColor: '#26263a', padding: { x: 8, y: 4 },
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.scene.start('help', { next: 'select' }))
+
     // Campaign grid: 10 per row
     const cols = 10, cell = Math.min(56, (width - 24) / cols)
     data.campaign.forEach((level, i) => {
@@ -40,5 +46,12 @@ export default class LevelSelect extends Phaser.Scene {
       if (starsEarned > 0) this.add.text(x, y + 22, '★'.repeat(starsEarned),
         { fontSize: '10px', color: '#e8c34a' }).setOrigin(0.5)
     })
+
+    try {
+      if (!localStorage.getItem('dot-connect-seen-help-v1')) {
+        localStorage.setItem('dot-connect-seen-help-v1', '1')
+        this.scene.start('help', { next: 'select' })
+      }
+    } catch { /* ignore */ }
   }
 }

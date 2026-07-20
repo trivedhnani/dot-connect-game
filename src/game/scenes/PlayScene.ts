@@ -81,11 +81,17 @@ export default class PlayScene extends Phaser.Scene {
 
   private onLost() {
     track('level_lost', { id: this.level.id })
-    this.cameras.main.flash(300, 225, 75, 75)
+    this.flashOverlay(0xe14b4b, 0.5, 300)
     this.time.delayedCall(700, () => { this.scene.restart({ level: this.level } as never) })
   }
 
-  private flipFx() { this.cameras.main.flash(250, 232, 195, 74) }
+  private flipFx() { this.flashOverlay(0xe8c34a) }
+
+  private flashOverlay(color: number, alpha = 0.45, duration = 250) {
+    const rect = this.add.rectangle(0, 0, this.scale.width * 2, this.scale.height * 2, color, alpha)
+      .setOrigin(0).setDepth(1000)
+    this.tweens.add({ targets: rect, alpha: 0, duration, onComplete: () => rect.destroy() })
+  }
 
   showBenchmark() { this.benchmarkShown = true; this.redraw() }
 

@@ -142,22 +142,26 @@ export default class PlayScene extends Phaser.Scene {
     this.iconButton(46, by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } }))
     this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') })
     this.iconButton(width - 46, by, '↻', () => {
-      if (this.round.status !== 'playing' || this.unwinding || this.rewindAnim !== null) return
+      if ((this.round.status !== 'playing' && this.round.status !== 'won') || this.unwinding || this.rewindAnim !== null) return
       track('level_restart', { id: this.level.id })
       sfx.brush(); haptic.restart()
-      if (REDUCED) { this.scene.restart({ level: this.level } as never); return }
-      this.inputLocked = true
-      this.unwinding = true
-      this.unwindT = 0
-      this.retractCells = []
-      this.retractLen = 0
-      this.tweens.add({
-        targets: this,
-        unwindT: 1,
-        duration: T.unwind,
-        ease: 'Cubic.easeIn',
-        onComplete: () => this.scene.restart({ level: this.level } as never),
-      })
+      if (this.round.status === 'won') {
+        this.scene.stop('grade'); this.scene.restart({ level: this.level } as never)
+      } else {
+        if (REDUCED) { this.scene.restart({ level: this.level } as never); return }
+        this.inputLocked = true
+        this.unwinding = true
+        this.unwindT = 0
+        this.retractCells = []
+        this.retractLen = 0
+        this.tweens.add({
+          targets: this,
+          unwindT: 1,
+          duration: T.unwind,
+          ease: 'Cubic.easeIn',
+          onComplete: () => this.scene.restart({ level: this.level } as never),
+        })
+      }
     })
     this.syncHud()
   }

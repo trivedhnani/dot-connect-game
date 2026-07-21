@@ -14,10 +14,10 @@ export const F = {
 export const T = {
   pop: 140, lootFade: 200, doorDrain: 220, chipDip: 180,
   flipBeat: 250, flipStagger: 110, flipFade: 180, noteFade: 240,
-  redPulse: 160, heartFade: 200, rewindPerCell: 60,
+  redPulse: 160, heartFade: 200, rewindPerCell: 110,
   sweep: 500, starStagger: 150, solvedFade: 300,
   introGroup: 140, introWithin: 45, introDot: 220, introLead: 100,
-  unwind: 250, headSpringMs: 90,
+  unwind: 250, headSpringMs: 90, retractPerCell: 100,
 } as const
 export const REDUCED: boolean =
   typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches

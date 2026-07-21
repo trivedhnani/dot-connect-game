@@ -54,6 +54,8 @@ export default class PlayScene extends Phaser.Scene {
   private prePathSnapshot: Pos[] = []
   private unwinding = false
   private unwindT = 0
+  private retractCells: Pos[] = []
+  private retractLen = 0
 
   constructor() { super('play') }
 
@@ -77,6 +79,8 @@ export default class PlayScene extends Phaser.Scene {
     this.prePathSnapshot = []
     this.unwinding = false
     this.unwindT = 0
+    this.retractCells = []
+    this.retractLen = 0
     this.g = this.add.graphics()
     this.buildHud()
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })
@@ -109,6 +113,11 @@ export default class PlayScene extends Phaser.Scene {
     const k = REDUCED ? 1 : 1 - Math.exp(-delta / T.headSpringMs)
     this.headX += (tx - this.headX) * k
     this.headY += (ty - this.headY) * k
+    if (this.retractLen > 0) {
+      this.retractLen = Math.max(0, this.retractLen - delta / T.retractPerCell)
+      const keep = Math.ceil(this.retractLen)
+      if (this.retractCells.length > keep) this.retractCells.length = keep
+    }
     this.redraw(time)
   }
 
@@ -140,6 +149,8 @@ export default class PlayScene extends Phaser.Scene {
       this.inputLocked = true
       this.unwinding = true
       this.unwindT = 0
+      this.retractCells = []
+      this.retractLen = 0
       this.tweens.add({
         targets: this,
         unwindT: 1,
@@ -202,6 +213,9 @@ export default class PlayScene extends Phaser.Scene {
     this.prePathSnapshot = [...this.round.path]
     const res = tryMove(this.round, pos)
     if (res.kind === 'moved' || res.kind === 'activated') {
+      // re-drawing forward into a cell that's still shown as a retract ghost: the logical
+      // line has caught back up to it, so drop the ghost immediately rather than let it fight
+      if (this.retractCells.some((q) => samePos(q, pos))) { this.retractCells = []; this.retractLen = 0 }
       this.pops.set(pos.r + ',' + pos.c, this.time.now)
       sfx.tick(this.round.path.length)
       haptic.cell()
@@ -210,7 +224,16 @@ export default class PlayScene extends Phaser.Scene {
         this.lootFades.set(pos.r + ',' + pos.c, this.time.now)
       }
     }
-    if (res.kind === 'retracted') sfx.tickDown(this.round.path.length)
+    if (res.kind === 'retracted') {
+      sfx.tickDown(this.round.path.length)
+      if (!REDUCED) {
+        const removedCell = this.prePathSnapshot[this.prePathSnapshot.length - 1]!
+        this.retractCells.unshift(removedCell)
+        this.retractLen += 1
+        if (this.retractCells.length > 4) this.retractCells.length = 4
+        if (this.retractLen > 4) this.retractLen = 4
+      }
+    }
     if (res.kind === 'rejected' && res.reason === 'visited') {
       // 3px rubber-band on the visual head toward the refused cell
       const [rx, ry] = this.center(pos)
@@ -239,6 +262,9 @@ export default class PlayScene extends Phaser.Scene {
     if (res.kind === 'red-hit') {
       sfx.thud(); haptic.red()
       this.redPulse = { key: pos.r + ',' + pos.c, t0: this.time.now }
+      // a red-hit truncates the path independently of any pending drag-undo ghost; drop it
+      this.retractCells = []
+      this.retractLen = 0
       // animate the path the engine already truncated: replay the removed cells backwards
       const removed = this.prePathSnapshot.slice(this.round.path.length)
       this.rewindAnim = { cells: removed, t0: this.time.now }
@@ -257,6 +283,8 @@ export default class PlayScene extends Phaser.Scene {
     sfx.chord(); haptic.win()
     this.sweep = { t0: this.time.now }
     this.inputLocked = true
+    this.retractCells = []
+    this.retractLen = 0
     this.time.delayedCall(T.sweep, () => this.scene.launch('grade', { grade, level: this.level, playScene: this }))
   }
 
@@ -377,18 +405,9 @@ export default class PlayScene extends Phaser.Scene {
       else { g.fillStyle(C.emptyDot, 1); g.fillCircle(x, y, 3.5 * iS) }
     }
 
-    // rewind: consume one removed cell per T.rewindPerCell so the tail visibly retreats
-    let tail: Pos[] = []
-    if (this.rewindAnim) {
-      const elapsed = now - this.rewindAnim.t0
-      const totalMs = this.rewindAnim.cells.length * T.rewindPerCell
-      if (elapsed >= totalMs) this.rewindAnim = null
-      // REDUCED: tail retreat is movement — skip it, path shows its final (already-truncated) state
-      // immediately while the same-duration tick sounds still play on schedule via onPointer's delayedCalls
-      else if (!REDUCED) tail = this.rewindAnim.cells.slice(0, this.rewindAnim.cells.length - Math.floor(elapsed / T.rewindPerCell))
-    }
-
-    // the line: blue with round joints (circle at every vertex); the head glides to the tip
+    // the line: blue with round joints (circle at every vertex); the head glides to the tip.
+    // during a red-hit rewind or a drag-undo retract, a "ghost" tail extends from the live path
+    // through the recently-removed cells and continuously retreats, replacing the springing head.
     if (this.unwinding) {
       // restart unwind: the line retreats from the tip back to the start (reuses the sweep's partial-polyline interpolation)
       const path = this.round.path
@@ -411,20 +430,61 @@ export default class PlayScene extends Phaser.Scene {
         g.fillCircle(ex, ey, w / 2)
       }
     } else {
-      const pathForLine = [...this.round.path, ...tail]
-      if (pathForLine.length > 1) {
+      const path = this.round.path
+
+      // pick whichever ghost source is active (mutually exclusive): a red-hit rewind takes
+      // precedence over a drag-undo retract, but both clear on unwind/sweep/re-entry (see onPointer)
+      let ghostCells: Pos[] | null = null
+      let ghostLen = 0
+      if (this.rewindAnim) {
+        if (REDUCED) {
+          // REDUCED: tail retreat is movement — skip it, path already reflects the truncated
+          // state; onPointer's delayedCall still clears rewindAnim (and inputLocked) on schedule
+        } else {
+          const elapsed = now - this.rewindAnim.t0
+          const tailLen = Math.max(0, this.rewindAnim.cells.length - elapsed / T.rewindPerCell)
+          if (tailLen <= 0) this.rewindAnim = null
+          else { ghostCells = this.rewindAnim.cells; ghostLen = tailLen }
+        }
+      } else if (!REDUCED && this.retractLen > 0.05) {
+        ghostCells = this.retractCells
+        ghostLen = this.retractLen
+      }
+
+      const hasGhost = !!ghostCells && ghostCells.length > 0 && ghostLen > 0
+      const basePoints: Pos[] = hasGhost ? [...path] : path.slice(0, -1)
+      let tipX = this.headX, tipY = this.headY
+
+      if (hasGhost) {
+        const cells = ghostCells!
+        const clamped = Math.min(cells.length, ghostLen)
+        const n = Math.floor(clamped)
+        const frac = clamped - n
+        for (let i = 0; i < n; i++) basePoints.push(cells[i]!)
+        if (frac > 1e-4 && n < cells.length) {
+          const prev = n > 0 ? cells[n - 1]! : path[path.length - 1]!
+          const [ax, ay] = this.center(prev)
+          const [bx, by] = this.center(cells[n]!)
+          tipX = ax + (bx - ax) * frac
+          tipY = ay + (by - ay) * frac
+        } else {
+          const tipCenter = this.center(n > 0 ? cells[n - 1]! : path[path.length - 1]!)
+          tipX = tipCenter[0]; tipY = tipCenter[1]
+        }
+      }
+
+      if (basePoints.length > 0) {
         const w = Math.max(6, cell * 0.16)
         g.lineStyle(w, C.line, 1)
         g.beginPath()
-        const [sx, sy] = this.center(pathForLine[0]!)
+        const [sx, sy] = this.center(basePoints[0]!)
         g.moveTo(sx, sy)
-        for (const p of pathForLine.slice(1, -1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
-        const [lx, ly] = tail.length > 0 ? this.center(pathForLine[pathForLine.length - 1]!) : [this.headX, this.headY]
-        g.lineTo(lx, ly)
+        for (const p of basePoints.slice(1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
+        g.lineTo(tipX, tipY)
         g.strokePath()
-        for (const p of pathForLine.slice(0, -1)) { const [x, y] = this.center(p); g.fillStyle(C.line, 1); g.fillCircle(x, y, w / 2) }
+        for (const p of basePoints) { const [x, y] = this.center(p); g.fillStyle(C.line, 1); g.fillCircle(x, y, w / 2) }
         g.fillStyle(C.line, 1)
-        g.fillCircle(lx, ly, w / 2)
+        g.fillCircle(tipX, tipY, w / 2)
       }
     }
 

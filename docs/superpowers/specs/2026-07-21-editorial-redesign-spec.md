@@ -29,6 +29,7 @@ below are authoritative and complete — the artifacts are only pictures of them
   "Identity over state" — same rule as the HUD chip.
 - **Door (after flip)**: ordinary red dot, identical to other reds. No ring.
 - **Loot**: gray dot; once covered by the line → 40% alpha, no scale change.
+- **Waypoint (mid)**: hollow ring in line blue — the line must thread through it; 0.4 alpha once visited.
 - **Empty**: tiny `emptyDot` circle.
 - Cell = white `card` rounded rect (radius ~11 at 64px cell) with a soft shadow
   (Phaser: offset duplicate rect, `ink` at 0.06 alpha, +2y).
@@ -73,14 +74,14 @@ leave = ease-in. `prefers-reduced-motion` → movement collapses to fades, same 
 
 | Moment | Animation | Sound | Haptic (web Android) |
 |---|---|---|---|
-| Level intro | dots grow in (back-out, 220ms each): loot group → hazards → doors → start+exit; groups 140ms apart, 45ms within; input enabled after (~700ms) or on tap-skip | 4 soft rising ticks, one per group | vibrate(8) per group |
+| Level intro | dots grow in (back-out, 220ms each): loot group → hazards → doors → start+exit; groups 140ms apart, 45ms within; input enabled after (~785ms total) or on tap-skip | 4 soft rising ticks, one per group | vibrate(8) per group |
 | Draw | visual head SPRINGS toward pointer, ~90ms exponential smoothing — never snaps; entered cell card pops 1→1.06→1 (140ms); line = blue, round caps (circles at joints) | rising chromatic tick per cell from G4 | vibrate(8) per cell |
-| Retract | same glide reversed | falling ticks | none |
+| Retract | tail glides back ~100ms/cell (ghost tail through removed cells) | falling ticks | none |
 | Illegal move | 3px rubber-band on head | none | none |
 | Loot | gray fades to 40% over 200ms | soft pip (B5) | none extra |
 | Door commit | fill drains yellow→paper 220ms, ring stays yellow, dot shrinks ~20%; chip numeral dips 3px 180ms and decrements | woody clunk (130Hz tri + 98Hz sine) | vibrate(25) |
 | Flip (last door) | commit → 250ms beat → remaining doors crossfade yellow→red 180ms each, 110ms stagger → "DOORS SEALED" fades in 240ms. CALM: no tint/vignette | one muted low tick per flipping door | vibrate([30,40,30]) once |
-| Red hit | red dot pulses ×1.15 160ms; heart empties (fade 200ms); line rewinds 60ms/cell to checkpoint | low thud (90Hz) + falling ticks during rewind | vibrate([60,40,60]) |
+| Red hit | red dot pulses ×1.15 160ms; heart empties (fade 200ms); line rewinds continuously, 110ms/cell to checkpoint | low thud (90Hz) + falling ticks during rewind | vibrate([60,40,60]) |
 | Win | white pulse sweeps the full path 500ms → grade overlay: stars stamp back-out 150ms stagger → "Solved." fades 300ms | rising 3-note chord C5-E5-G5 | vibrate([40,60,40,60,80]) |
 | Restart | line unwinds 250ms ease-in; states cross-fade back last 150ms | soft brush down-sweep | vibrate(15) |
 

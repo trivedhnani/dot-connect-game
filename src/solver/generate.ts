@@ -34,18 +34,22 @@ export function generateCandidate(p: GenParams): LevelInput | null {
   grid[start.r]![start.c] = 'S'
   grid[exit.r]![exit.c] = 'E'
 
-  const place = (ch: string, count: number): boolean => {
+  const place = (ch: string, count: number, ok?: (r: number, c: number) => boolean): boolean => {
     for (let n = 0; n < count; n++) {
       let placed = false
       for (let i = 0; i < 100; i++) {
         const { r, c } = randCell()
-        if (grid[r]![c] === '.') { grid[r]![c] = ch; placed = true; break }
+        if (grid[r]![c] === '.' && (!ok || ok(r, c))) { grid[r]![c] = ch; placed = true; break }
       }
       if (!placed) return false
     }
     return true
   }
-  if (!place('y', p.yellows) || !place('r', p.reds) || !place('g', p.grays) || !place('M', p.mids)) return null
+  // A door near the start telegraphs the opening move — keep yellows out of reach.
+  const minYellowDist = p.size >= 7 ? 3 : 2
+  const yellowOk = (r: number, c: number) =>
+    Math.abs(r - start.r) + Math.abs(c - start.c) >= minYellowDist
+  if (!place('y', p.yellows, yellowOk) || !place('r', p.reds) || !place('g', p.grays) || !place('M', p.mids)) return null
 
   return { size: p.size, rows: grid.map((row) => row.join('')), yellowBudget: p.budget }
 }

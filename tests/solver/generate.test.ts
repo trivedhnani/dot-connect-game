@@ -22,6 +22,21 @@ test('generateCandidate is reproducible from its seed and respects counts', () =
   expect([...flat].filter((ch) => ch === 'E').length).toBe(1)
 })
 
+test('yellows are never closer than the minimum distance to the start', () => {
+  for (const size of [5, 7]) {
+    const minDist = size >= 7 ? 3 : 2
+    for (let seed = 0; seed < 300; seed++) {
+      const cand = generateCandidate({ size, grays: 4, yellows: 3, budget: 1, reds: 3, mids: 0, seed })
+      if (!cand) continue
+      let start = { r: -1, c: -1 }
+      cand.rows.forEach((row, r) => { const c = row.indexOf('S'); if (c >= 0) start = { r, c } })
+      cand.rows.forEach((row, r) => [...row].forEach((ch, c) => {
+        if (ch === 'y') expect(Math.abs(r - start.r) + Math.abs(c - start.c)).toBeGreaterThanOrEqual(minDist)
+      }))
+    }
+  }
+})
+
 test('some seeds yield levels that pass validation (generator is productive)', () => {
   let found = 0
   for (let seed = 0; seed < 500 && found < 1; seed++) {

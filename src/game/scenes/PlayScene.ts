@@ -6,12 +6,19 @@ import type { Level, Pos, RoundState } from '../../engine/types'
 import { track } from '../analytics'
 import { TEXT_RESOLUTION } from '../ui'
 import { C, CS, F, T, REDUCED } from '../theme'
+import { sfx } from '../sfx'
+import { haptic } from '../haptics'
 
 export default class PlayScene extends Phaser.Scene {
   private level!: Level
   private round!: RoundState
   private g!: Phaser.GameObjects.Graphics
-  private hud!: Phaser.GameObjects.Text
+  private hudLevel!: Phaser.GameObjects.Text
+  private hudHearts!: Phaser.GameObjects.Text
+  private hudChipText!: Phaser.GameObjects.Text
+  private hudChipDot!: Phaser.GameObjects.Graphics
+  private hudRule!: Phaser.GameObjects.Graphics
+  private noteText!: Phaser.GameObjects.Text
   private dragging = false
   private benchmarkShown = false
 
@@ -23,34 +30,7 @@ export default class PlayScene extends Phaser.Scene {
     this.round = createRound(this.level)
     this.benchmarkShown = false
     this.g = this.add.graphics()
-    const hudFont = this.scale.width < 520 ? 12 : 16
-    const home = this.add.text(this.scale.width - 10, 8, '⌂ levels', {
-      fontSize: `${hudFont}px`,
-      color: CS.ink,
-      backgroundColor: CS.card,
-      padding: { x: 10, y: 6 },
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => { this.scene.stop('grade'); this.scene.start('select') })
-    const restart = this.add.text(this.scale.width - 10 - home.displayWidth - 8, 8, '↻ restart', {
-      fontSize: `${hudFont}px`,
-      color: CS.ink,
-      backgroundColor: CS.card,
-      padding: { x: 10, y: 6 },
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
-        if (this.round.status !== 'playing') return
-        track('level_restart', { id: this.level.id })
-        this.scene.restart({ level: this.level } as never)
-      })
-    this.hud = this.add.text(12, 10, '', {
-      fontSize: `${hudFont}px`,
-      color: CS.ink,
-      fontFamily: F.sans,
-      wordWrap: { width: restart.getBounds().left - 24 },
-      resolution: TEXT_RESOLUTION,
-    })
+    this.buildHud()
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.dragging) this.onPointer(p) })
     this.input.on('pointerup', () => { this.dragging = false })
@@ -61,12 +41,60 @@ export default class PlayScene extends Phaser.Scene {
     this.redraw()
   }
 
+  private buildHud() {
+    const { width, height } = this.scale
+    const fs = width < 520 ? 15 : 17
+    this.hudLevel = this.add.text(18, 14, `No. ${this.level.id.replace(/^\D+0?/, '')}`, {
+      fontFamily: F.serif, fontStyle: 'italic', fontSize: `${fs}px`, color: CS.ink, resolution: TEXT_RESOLUTION,
+    })
+    this.hudHearts = this.add.text(width / 2, 14, '', { fontSize: `${fs - 2}px`, color: CS.hazard, resolution: TEXT_RESOLUTION }).setOrigin(0.5, 0)
+    // chip: hairline pill + yellow ringed dot + count
+    const chipX = width - 18
+    this.hudChipText = this.add.text(chipX, 15, '× 0', { fontFamily: F.sans, fontSize: `${fs - 4}px`, fontStyle: 'bold', color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(1, 0)
+    this.hudChipDot = this.add.graphics()
+    this.hudRule = this.add.graphics()
+    this.hudRule.lineStyle(1, C.hair, 1).lineBetween(0, 44, width, 44)
+    this.noteText = this.add.text(width / 2, height - 96, 'DOORS SEALED', {
+      fontFamily: F.sans, fontSize: '12px', color: CS.sub, resolution: TEXT_RESOLUTION, letterSpacing: 2,
+    }).setOrigin(0.5).setAlpha(0)
+    // thumb bar: ? ⌂ ↻
+    const by = height - 44
+    this.iconButton(46, by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } }))
+    this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') })
+    this.iconButton(width - 46, by, '↻', () => {
+      if (this.round.status !== 'playing') return
+      track('level_restart', { id: this.level.id })
+      sfx.brush(); haptic.restart()
+      this.scene.restart({ level: this.level } as never)
+    })
+    this.syncHud()
+  }
+
+  private iconButton(x: number, y: number, glyph: string, onTap: () => void) {
+    const circle = this.add.circle(x, y, 22, C.card).setStrokeStyle(1, C.hair)
+    const label = this.add.text(x, y, glyph, { fontFamily: F.sans, fontSize: '18px', color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
+    circle.setInteractive({ useHandCursor: true }).on('pointerdown', onTap)
+    return this.add.container(0, 0, [circle, label])
+  }
+
+  private syncHud() {
+    const lives = Math.max(0, this.round.lives)
+    this.hudHearts.setText('♥'.repeat(lives) + '♡'.repeat(this.round.level.lives - lives))
+    const left = this.round.level.yellowBudget - this.round.yellowsUsed
+    this.hudChipText.setText(`× ${Math.max(0, left)}`)
+    const dotX = this.hudChipText.getBounds().left - 14, dotY = 15 + this.hudChipText.height / 2
+    this.hudChipDot.clear()
+    this.hudChipDot.fillStyle(C.door, 1).fillCircle(dotX, dotY, 5.5)
+    this.hudChipDot.lineStyle(2, C.door, 0.45).strokeCircle(dotX, dotY, 8)
+    this.noteText.setAlpha(this.round.flipped ? 1 : 0)
+  }
+
   private layout() {
     const { width, height } = this.scale
     const size = this.level.size
-    const cell = Math.floor(Math.min(width, height - 60) / (size + 1))
+    const cell = Math.floor(Math.min(width - 28, height - 160) / (size + 1))
     const ox = Math.floor((width - cell * size) / 2)
-    const oy = 50 + Math.floor((height - 50 - cell * size) / 2)
+    const oy = 56 + Math.floor((height - 146 - cell * size) / 2)
     return { cell, ox, oy, size }
   }
 
@@ -171,7 +199,6 @@ export default class PlayScene extends Phaser.Scene {
       for (const p of this.level.benchmark.path.slice(1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
       g.strokePath()
     }
-    const doorsLeft = this.round.level.yellowBudget - this.round.yellowsUsed
-    this.hud.setText(`${this.level.id}   lives ${'♥'.repeat(Math.max(0, this.round.lives))}   doors left ${doorsLeft}${this.round.flipped ? '  DOORS SEALED' : ''}`)
+    this.syncHud()
   }
 }

@@ -21,6 +21,9 @@ export default class PlayScene extends Phaser.Scene {
   private noteText!: Phaser.GameObjects.Text
   private dragging = false
   private benchmarkShown = false
+  private headX = 0
+  private headY = 0
+  private pops = new Map<string, number>()
 
   constructor() { super('play') }
 
@@ -29,16 +32,29 @@ export default class PlayScene extends Phaser.Scene {
   create() {
     this.round = createRound(this.level)
     this.benchmarkShown = false
+    const [hx, hy] = this.center(this.round.path[0]!)
+    this.headX = hx
+    this.headY = hy
+    this.pops = new Map()
     this.g = this.add.graphics()
     this.buildHud()
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.dragging) this.onPointer(p) })
     this.input.on('pointerup', () => { this.dragging = false })
-    const handler = () => this.redraw()
+    const handler = () => this.redraw(this.time.now)
     this.scale.on('resize', handler)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off('resize', handler))
     track('level_start', { id: this.level.id })
-    this.redraw()
+    this.redraw(this.time.now)
+  }
+
+  update(time: number, delta: number) {
+    const tip = this.round.path[this.round.path.length - 1]!
+    const [tx, ty] = this.center(tip)
+    const k = REDUCED ? 1 : 1 - Math.exp(-delta / T.headSpringMs)
+    this.headX += (tx - this.headX) * k
+    this.headY += (ty - this.headY) * k
+    this.redraw(time)
   }
 
   private buildHud() {
@@ -115,11 +131,23 @@ export default class PlayScene extends Phaser.Scene {
     const tip = this.round.path[this.round.path.length - 1]!
     if (samePos(pos, tip)) return
     const res = tryMove(this.round, pos)
+    if (res.kind === 'moved' || res.kind === 'activated') {
+      this.pops.set(pos.r + ',' + pos.c, this.time.now)
+      sfx.tick(this.round.path.length)
+      haptic.cell()
+    }
+    if (res.kind === 'retracted') sfx.tickDown(this.round.path.length)
+    if (res.kind === 'rejected' && res.reason === 'visited') {
+      // 3px rubber-band on the visual head toward the refused cell
+      const [rx, ry] = this.center(pos)
+      const d = Math.hypot(rx - this.headX, ry - this.headY) || 1
+      this.headX += 3 * (rx - this.headX) / d
+      this.headY += 3 * (ry - this.headY) / d
+    }
     if (res.kind === 'activated' && res.flipped) this.flipFx()
     if (res.kind === 'red-hit') { this.cameras.main.shake(150, 0.01); this.dragging = false }
     if (res.kind === 'won') this.onWon()
     if (res.kind === 'lost') { this.onLost(); this.dragging = false }
-    if (res.kind !== 'rejected') this.redraw()
   }
 
   private onWon() {
@@ -142,7 +170,7 @@ export default class PlayScene extends Phaser.Scene {
     this.tweens.add({ targets: rect, alpha: 0, duration, onComplete: () => rect.destroy() })
   }
 
-  showBenchmark() { this.benchmarkShown = true; this.redraw() }
+  showBenchmark() { this.benchmarkShown = true; this.redraw(this.time.now) }
 
   private drawDot(x: number, y: number, r: number, color: number, ring?: number, ringGap = 4, ringAlpha = 1) {
     if (r < 0.4) return
@@ -154,7 +182,7 @@ export default class PlayScene extends Phaser.Scene {
     }
   }
 
-  private redraw() {
+  private redraw(now: number) {
     const { cell, ox, oy, size } = this.layout()
     const g = this.g
     g.clear()
@@ -162,10 +190,21 @@ export default class PlayScene extends Phaser.Scene {
     for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
       const p = { r, c }
       // card cell with a faux shadow (Phaser Graphics has no blur — offset ink at low alpha)
+      // cells pop briefly on entry: scale the rect about its own center
+      const key = r + ',' + c
+      const popT0 = this.pops.get(key)
+      let s = 1
+      if (popT0 !== undefined) {
+        if (now - popT0 < T.pop) { if (!REDUCED) s = 1 + 0.06 * Math.sin(Math.PI * (now - popT0) / T.pop) }
+        else this.pops.delete(key)
+      }
+      const cx = ox + c * cell + cell / 2
+      const cardCy = oy + r * cell + cell / 2
+      const w = (cell - 6) * s
       g.fillStyle(C.ink, 0.06)
-      g.fillRoundedRect(ox + c * cell + 3, oy + r * cell + 5, cell - 6, cell - 6, 11)
+      g.fillRoundedRect(cx - w / 2, cardCy + 2 - w / 2, w, w, 11)
       g.fillStyle(C.card, 1)
-      g.fillRoundedRect(ox + c * cell + 3, oy + r * cell + 3, cell - 6, cell - 6, 11)
+      g.fillRoundedRect(cx - w / 2, cardCy - w / 2, w, w, 11)
       const base = this.round.cells[r]![c]!
       const eff = effectiveKind(this.round, p)
       const activated = base === 'yellow' && eff === 'empty'
@@ -179,16 +218,19 @@ export default class PlayScene extends Phaser.Scene {
       else if (base === 'gray') { g.fillStyle(C.loot, grayTaken ? 0.4 : 1); g.fillCircle(x, y, dotR * 0.85) }
       else { g.fillStyle(C.emptyDot, 1); g.fillCircle(x, y, 3.5) }
     }
-    // the line: blue with round joints (circle at every vertex)
+    // the line: blue with round joints (circle at every vertex); the head glides to the tip
     if (this.round.path.length > 1) {
       const w = Math.max(6, cell * 0.16)
       g.lineStyle(w, C.line, 1)
       g.beginPath()
       const [sx, sy] = this.center(this.round.path[0]!)
       g.moveTo(sx, sy)
-      for (const p of this.round.path.slice(1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
+      for (const p of this.round.path.slice(1, -1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
+      g.lineTo(this.headX, this.headY)
       g.strokePath()
-      for (const p of this.round.path) { const [x, y] = this.center(p); g.fillStyle(C.line, 1); g.fillCircle(x, y, w / 2) }
+      for (const p of this.round.path.slice(0, -1)) { const [x, y] = this.center(p); g.fillStyle(C.line, 1); g.fillCircle(x, y, w / 2) }
+      g.fillStyle(C.line, 1)
+      g.fillCircle(this.headX, this.headY, w / 2)
     }
     // benchmark reveal: quiet ink line
     if (this.benchmarkShown && this.level.benchmark.path.length > 1) {

@@ -31,6 +31,8 @@ export default class HowToPlay extends Phaser.Scene {
       '',
       'RED dots cost a life and rewind you to your last door (or the start). Out of lives = the level resets.',
       '',
+      'Committed to a bad door? ↻ restart gives you a fresh attempt — path, doors and lives all reset, free, anytime.',
+      '',
       'CYAN dots (later levels) must all be visited before the exit opens.',
       '',
       'SCORING: graded against the best-known path — more grays, fewer doors, no red hits, shorter line.',

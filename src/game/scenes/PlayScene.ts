@@ -28,14 +28,7 @@ export default class PlayScene extends Phaser.Scene {
     this.benchmarkShown = false
     this.g = this.add.graphics()
     const hudFont = this.scale.width < 520 ? 12 : 16
-    this.hud = this.add.text(12, 10, '', {
-      fontSize: `${hudFont}px`,
-      color: '#cfd3e0',
-      fontFamily: 'monospace',
-      wordWrap: { width: this.scale.width - 130 },
-      resolution: TEXT_RESOLUTION,
-    })
-    this.add.text(this.scale.width - 10, 8, '⌂ levels', {
+    const home = this.add.text(this.scale.width - 10, 8, '⌂ levels', {
       fontSize: `${hudFont}px`,
       color: '#cfd3e0',
       backgroundColor: '#26263a',
@@ -43,6 +36,25 @@ export default class PlayScene extends Phaser.Scene {
       resolution: TEXT_RESOLUTION,
     }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => { this.scene.stop('grade'); this.scene.start('select') })
+    const restart = this.add.text(this.scale.width - 10 - home.displayWidth - 8, 8, '↻ restart', {
+      fontSize: `${hudFont}px`,
+      color: '#cfd3e0',
+      backgroundColor: '#26263a',
+      padding: { x: 10, y: 6 },
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        if (this.round.status !== 'playing') return
+        track('level_restart', { id: this.level.id })
+        this.scene.restart({ level: this.level } as never)
+      })
+    this.hud = this.add.text(12, 10, '', {
+      fontSize: `${hudFont}px`,
+      color: '#cfd3e0',
+      fontFamily: 'monospace',
+      wordWrap: { width: restart.getBounds().left - 24 },
+      resolution: TEXT_RESOLUTION,
+    })
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.dragging) this.onPointer(p) })
     this.input.on('pointerup', () => { this.dragging = false })

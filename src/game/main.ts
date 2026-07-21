@@ -7,7 +7,7 @@ import HowToPlay from './scenes/HowToPlay'
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
-  backgroundColor: '#101018',
+  backgroundColor: '#f3f1ed',
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
   scene: [LevelSelect, PlayScene, GradeOverlay, HowToPlay],  // first scene auto-starts
 })

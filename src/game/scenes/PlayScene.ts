@@ -201,7 +201,7 @@ export default class PlayScene extends Phaser.Scene {
     if (res.kind === 'activated') {
       this.doorDrains.set(pos.r + ',' + pos.c, this.time.now)
       sfx.clunk(); haptic.door()
-      this.tweens.add({ targets: this.hudChipText, y: '+=3', duration: T.chipDip / 2, yoyo: true, ease: 'Cubic.easeOut' })
+      if (!REDUCED) this.tweens.add({ targets: this.hudChipText, y: '+=3', duration: T.chipDip / 2, yoyo: true, ease: 'Cubic.easeOut' })
       if (res.flipped) {
         dramaCount++
         const beat = dramaCount <= 3 ? T.flipBeat : 0
@@ -323,7 +323,8 @@ export default class PlayScene extends Phaser.Scene {
         const drainT0 = this.doorDrains.get(key)
         if (drainT0 !== undefined && now - drainT0 < T.doorDrain) {
           const t = (now - drainT0) / T.doorDrain
-          const rad = dotR - t * dotR * 0.25
+          // radius shrink is movement — hold at final size under REDUCED; color mix is a fade, keeps timing
+          const rad = REDUCED ? dotR * 0.75 : dotR - t * dotR * 0.25
           this.drawDot(x, y, rad, mixColor(doorColor, paperColor, t), C.door, 3)
         } else {
           if (drainT0 !== undefined) this.doorDrains.delete(key)
@@ -348,9 +349,11 @@ export default class PlayScene extends Phaser.Scene {
     let tail: Pos[] = []
     if (this.rewindAnim) {
       const elapsed = now - this.rewindAnim.t0
-      const consumed = Math.floor(elapsed / T.rewindPerCell)
-      if (consumed >= this.rewindAnim.cells.length) this.rewindAnim = null
-      else tail = this.rewindAnim.cells.slice(0, this.rewindAnim.cells.length - consumed)
+      const totalMs = this.rewindAnim.cells.length * T.rewindPerCell
+      if (elapsed >= totalMs) this.rewindAnim = null
+      // REDUCED: tail retreat is movement — skip it, path shows its final (already-truncated) state
+      // immediately while the same-duration tick sounds still play on schedule via onPointer's delayedCalls
+      else if (!REDUCED) tail = this.rewindAnim.cells.slice(0, this.rewindAnim.cells.length - Math.floor(elapsed / T.rewindPerCell))
     }
 
     // the line: blue with round joints (circle at every vertex); the head glides to the tip
@@ -373,23 +376,33 @@ export default class PlayScene extends Phaser.Scene {
     // win sweep: a bright segment travels the solved path once before the grade overlay opens
     if (this.sweep) {
       const path = this.round.path
+      const t = Math.min(1, (now - this.sweep.t0) / T.sweep)
       if (path.length > 1) {
-        const segs = path.length - 1
-        const t = Math.min(1, (now - this.sweep.t0) / T.sweep)
-        const tailLen = 1.6 / segs
-        const tailT = Math.max(0, t - tailLen)
         const w = Math.max(6, cell * 0.16)
-        g.lineStyle(w, 0xffffff, 0.75)
-        g.beginPath()
-        const [sx, sy] = this.pointAtT(path, tailT)
-        g.moveTo(sx, sy)
-        for (let i = 0; i < path.length; i++) {
-          const paramI = i / segs
-          if (paramI > tailT && paramI < t) { const [x, y] = this.center(path[i]!); g.lineTo(x, y) }
+        if (REDUCED) {
+          // segment travel is movement — degrade to a whole-path fade-in at the same duration
+          g.lineStyle(w, 0xffffff, 0.75 * t)
+          g.beginPath()
+          const [sx, sy] = this.center(path[0]!)
+          g.moveTo(sx, sy)
+          for (const p of path.slice(1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
+          g.strokePath()
+        } else {
+          const segs = path.length - 1
+          const tailLen = 1.6 / segs
+          const tailT = Math.max(0, t - tailLen)
+          g.lineStyle(w, 0xffffff, 0.75)
+          g.beginPath()
+          const [sx, sy] = this.pointAtT(path, tailT)
+          g.moveTo(sx, sy)
+          for (let i = 0; i < path.length; i++) {
+            const paramI = i / segs
+            if (paramI > tailT && paramI < t) { const [x, y] = this.center(path[i]!); g.lineTo(x, y) }
+          }
+          const [ex, ey] = this.pointAtT(path, t)
+          g.lineTo(ex, ey)
+          g.strokePath()
         }
-        const [ex, ey] = this.pointAtT(path, t)
-        g.lineTo(ex, ey)
-        g.strokePath()
       }
       if ((now - this.sweep.t0) >= T.sweep) this.sweep = null
     }

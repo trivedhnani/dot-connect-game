@@ -21,3 +21,5 @@ export const T = {
 } as const
 export const REDUCED: boolean =
   typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+export const DPR = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 3)
+export const u = (n: number): number => n * DPR

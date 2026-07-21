@@ -5,7 +5,7 @@ import { samePos, findCells } from '../../engine/board'
 import type { Level, Pos, RoundState } from '../../engine/types'
 import { track } from '../analytics'
 import { TEXT_RESOLUTION } from '../ui'
-import { C, CS, F, T, REDUCED } from '../theme'
+import { C, CS, F, T, REDUCED, u } from '../theme'
 import { sfx } from '../sfx'
 import { haptic } from '../haptics'
 
@@ -123,25 +123,25 @@ export default class PlayScene extends Phaser.Scene {
 
   private buildHud() {
     const { width, height } = this.scale
-    const fs = width < 520 ? 15 : 17
-    this.hudLevel = this.add.text(18, 14, `No. ${this.level.id.replace(/^\D+0?/, '')}`, {
-      fontFamily: F.serif, fontStyle: 'italic', fontSize: `${fs}px`, color: CS.ink, resolution: TEXT_RESOLUTION,
+    const fs = width < u(520) ? 15 : 17
+    this.hudLevel = this.add.text(u(18), u(14), `No. ${this.level.id.replace(/^\D+0?/, '')}`, {
+      fontFamily: F.serif, fontStyle: 'italic', fontSize: `${u(fs)}px`, color: CS.ink, resolution: TEXT_RESOLUTION,
     })
-    this.hudHearts = this.add.text(width / 2, 14, '', { fontSize: `${fs - 2}px`, color: CS.hazard, resolution: TEXT_RESOLUTION }).setOrigin(0.5, 0)
+    this.hudHearts = this.add.text(width / 2, u(14), '', { fontSize: `${u(fs - 2)}px`, color: CS.hazard, resolution: TEXT_RESOLUTION }).setOrigin(0.5, 0)
     // chip: hairline pill + yellow ringed dot + count
-    const chipX = width - 18
-    this.hudChipText = this.add.text(chipX, 15, '× 0', { fontFamily: F.sans, fontSize: `${fs - 4}px`, fontStyle: 'bold', color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(1, 0)
+    const chipX = width - u(18)
+    this.hudChipText = this.add.text(chipX, u(15), '× 0', { fontFamily: F.sans, fontSize: `${u(fs - 4)}px`, fontStyle: 'bold', color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(1, 0)
     this.hudChipDot = this.add.graphics()
     this.hudRule = this.add.graphics()
-    this.hudRule.lineStyle(1, C.hair, 1).lineBetween(0, 44, width, 44)
-    this.noteText = this.add.text(width / 2, height - 96, 'DOORS SEALED', {
-      fontFamily: F.sans, fontSize: '12px', color: CS.sub, resolution: TEXT_RESOLUTION, letterSpacing: 2,
+    this.hudRule.lineStyle(u(1), C.hair, 1).lineBetween(0, u(44), width, u(44))
+    this.noteText = this.add.text(width / 2, height - u(96), 'DOORS SEALED', {
+      fontFamily: F.sans, fontSize: `${u(12)}px`, color: CS.sub, resolution: TEXT_RESOLUTION, letterSpacing: u(2),
     }).setOrigin(0.5).setAlpha(0)
     // thumb bar: ? ⌂ ↻
-    const by = height - 44
-    this.iconButton(46, by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } }))
+    const by = height - u(44)
+    this.iconButton(u(46), by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } }))
     this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') })
-    this.iconButton(width - 46, by, '↻', () => {
+    this.iconButton(width - u(46), by, '↻', () => {
       if ((this.round.status !== 'playing' && this.round.status !== 'won') || this.unwinding || this.rewindAnim !== null) return
       track('level_restart', { id: this.level.id })
       sfx.brush(); haptic.restart()
@@ -167,8 +167,8 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   private iconButton(x: number, y: number, glyph: string, onTap: () => void) {
-    const circle = this.add.circle(x, y, 22, C.card).setStrokeStyle(1, C.hair)
-    const label = this.add.text(x, y, glyph, { fontFamily: F.sans, fontSize: '18px', color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
+    const circle = this.add.circle(x, y, u(22), C.card).setStrokeStyle(u(1), C.hair)
+    const label = this.add.text(x, y, glyph, { fontFamily: F.sans, fontSize: `${u(18)}px`, color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
     circle.setInteractive({ useHandCursor: true }).on('pointerdown', onTap)
     return this.add.container(0, 0, [circle, label])
   }
@@ -182,18 +182,18 @@ export default class PlayScene extends Phaser.Scene {
     this.hudHearts.setText('♥'.repeat(lives) + '♡'.repeat(this.round.level.lives - lives))
     const left = this.round.level.yellowBudget - this.round.yellowsUsed
     this.hudChipText.setText(`× ${Math.max(0, left)}`)
-    const dotX = this.hudChipText.getBounds().left - 14, dotY = 15 + this.hudChipText.height / 2
+    const dotX = this.hudChipText.getBounds().left - u(14), dotY = u(15) + this.hudChipText.height / 2
     this.hudChipDot.clear()
-    this.hudChipDot.fillStyle(C.door, 1).fillCircle(dotX, dotY, 5.5)
-    this.hudChipDot.lineStyle(2, C.door, 0.45).strokeCircle(dotX, dotY, 8)
+    this.hudChipDot.fillStyle(C.door, 1).fillCircle(dotX, dotY, u(5.5))
+    this.hudChipDot.lineStyle(u(2), C.door, 0.45).strokeCircle(dotX, dotY, u(8))
   }
 
   private layout() {
     const { width, height } = this.scale
     const size = this.level.size
-    const cell = Math.floor(Math.min(width - 28, height - 160) / (size + 1))
+    const cell = Math.floor(Math.min(width - u(28), height - u(160)) / (size + 1))
     const ox = Math.floor((width - cell * size) / 2)
-    const oy = 56 + Math.floor((height - 146 - cell * size) / 2)
+    const oy = u(56) + Math.floor((height - u(146) - cell * size) / 2)
     return { cell, ox, oy, size }
   }
 
@@ -243,13 +243,13 @@ export default class PlayScene extends Phaser.Scene {
       // 3px rubber-band on the visual head toward the refused cell
       const [rx, ry] = this.center(pos)
       const d = Math.hypot(rx - this.headX, ry - this.headY) || 1
-      this.headX += 3 * (rx - this.headX) / d
-      this.headY += 3 * (ry - this.headY) / d
+      this.headX += u(3) * (rx - this.headX) / d
+      this.headY += u(3) * (ry - this.headY) / d
     }
     if (res.kind === 'activated') {
       this.doorDrains.set(pos.r + ',' + pos.c, this.time.now)
       sfx.clunk(); haptic.door()
-      if (!REDUCED) this.tweens.add({ targets: this.hudChipText, y: '+=3', duration: T.chipDip / 2, yoyo: true, ease: 'Cubic.easeOut' })
+      if (!REDUCED) this.tweens.add({ targets: this.hudChipText, y: `+=${u(3)}`, duration: T.chipDip / 2, yoyo: true, ease: 'Cubic.easeOut' })
       if (res.flipped) {
         dramaCount++
         const beat = dramaCount <= 3 ? T.flipBeat : 0
@@ -302,12 +302,12 @@ export default class PlayScene extends Phaser.Scene {
 
   getRound(): RoundState { return this.round }
 
-  private drawDot(x: number, y: number, r: number, color: number, ring?: number, ringGap = 4, ringAlpha = 1) {
-    if (r < 0.4) return
+  private drawDot(x: number, y: number, r: number, color: number, ring?: number, ringGap = u(4), ringAlpha = 1) {
+    if (r < u(0.4)) return
     this.g.fillStyle(color, 1)
     this.g.fillCircle(x, y, r)
     if (ring !== undefined) {
-      this.g.lineStyle(2.5, ring, ringAlpha)
+      this.g.lineStyle(u(2.5), ring, ringAlpha)
       this.g.strokeCircle(x, y, r + ringGap)
     }
   }
@@ -327,7 +327,7 @@ export default class PlayScene extends Phaser.Scene {
     const { cell, ox, oy, size } = this.layout()
     const g = this.g
     g.clear()
-    const dotR = Math.max(7, cell * 0.24)
+    const dotR = Math.max(u(7), cell * 0.24)
 
     // level intro: per-dot scale, group by group, tap-skippable (see create())
     const iScale = (key: string): number => {
@@ -359,11 +359,11 @@ export default class PlayScene extends Phaser.Scene {
       }
       const cx = ox + c * cell + cell / 2
       const cardCy = oy + r * cell + cell / 2
-      const w = (cell - 6) * s
+      const w = (cell - u(6)) * s
       g.fillStyle(C.ink, 0.06)
-      g.fillRoundedRect(cx - w / 2, cardCy + 2 - w / 2, w, w, 11)
+      g.fillRoundedRect(cx - w / 2, cardCy + u(2) - w / 2, w, w, u(11))
       g.fillStyle(C.card, 1)
-      g.fillRoundedRect(cx - w / 2, cardCy - w / 2, w, w, 11)
+      g.fillRoundedRect(cx - w / 2, cardCy - w / 2, w, w, u(11))
       const base = this.round.cells[r]![c]!
       const eff = effectiveKind(this.round, p)
       const activated = base === 'yellow' && eff === 'empty'
@@ -371,25 +371,25 @@ export default class PlayScene extends Phaser.Scene {
       const [x, y] = this.center(p)
       const iS = iScale(key)
       if (base === 'start') this.drawDot(x, y, dotR * iS, C.go)
-      else if (base === 'exit') { this.drawDot(x, y, dotR * 0.32 * iS, C.ink); this.g.lineStyle(2.5, C.ink, 1); this.g.strokeCircle(x, y, dotR * 0.82 * iS) }
+      else if (base === 'exit') { this.drawDot(x, y, dotR * 0.32 * iS, C.ink); this.g.lineStyle(u(2.5), C.ink, 1); this.g.strokeCircle(x, y, dotR * 0.82 * iS) }
       else if (activated) {
         const drainT0 = this.doorDrains.get(key)
         if (drainT0 !== undefined && now - drainT0 < T.doorDrain) {
           const t = (now - drainT0) / T.doorDrain
           // radius shrink is movement — hold at final size under REDUCED; color mix is a fade, keeps timing
           const rad = REDUCED ? dotR * 0.75 : dotR - t * dotR * 0.25
-          this.drawDot(x, y, rad, mixColor(doorColor, paperColor, t), C.door, 3)
+          this.drawDot(x, y, rad, mixColor(doorColor, paperColor, t), C.door, u(3))
         } else {
           if (drainT0 !== undefined) this.doorDrains.delete(key)
-          this.drawDot(x, y, dotR * 0.75, C.paper, C.door, 3)
+          this.drawDot(x, y, dotR * 0.75, C.paper, C.door, u(3))
         }
-      } else if (eff === 'yellow') this.drawDot(x, y, dotR * iS, C.door, C.door, 4, 0.45)
+      } else if (eff === 'yellow') this.drawDot(x, y, dotR * iS, C.door, C.door, u(4), 0.45)
       else if (eff === 'red') {
         const rScale = key === redKey ? redFactor : 1
         const fadeT0 = this.flipFades.get(key)
         if (fadeT0 !== undefined && now - fadeT0 < T.flipFade) {
           const t = (now - fadeT0) / T.flipFade
-          this.drawDot(x, y, dotR * iS * rScale, mixColor(doorColor, hazardColor, t), C.door, 4, 0.45 * (1 - t))
+          this.drawDot(x, y, dotR * iS * rScale, mixColor(doorColor, hazardColor, t), C.door, u(4), 0.45 * (1 - t))
         } else {
           if (fadeT0 !== undefined) this.flipFades.delete(key)
           this.drawDot(x, y, dotR * iS * rScale, C.hazard)
@@ -404,10 +404,10 @@ export default class PlayScene extends Phaser.Scene {
         g.fillStyle(C.loot, alpha); g.fillCircle(x, y, dotR * 0.85 * iS)
       } else if (base === 'mid') {
         const midOnPath = this.round.path.some((q) => samePos(q, p))
-        this.g.lineStyle(2.5, C.line, midOnPath ? 0.4 : 1)
+        this.g.lineStyle(u(2.5), C.line, midOnPath ? 0.4 : 1)
         this.g.strokeCircle(x, y, dotR * 0.8 * iS)
       }
-      else { g.fillStyle(C.emptyDot, 1); g.fillCircle(x, y, 3.5 * iS) }
+      else { g.fillStyle(C.emptyDot, 1); g.fillCircle(x, y, u(3.5) * iS) }
     }
 
     // the line: blue with round joints (circle at every vertex); the head glides to the tip.
@@ -418,7 +418,7 @@ export default class PlayScene extends Phaser.Scene {
       const path = this.round.path
       const t = Math.max(0, 1 - this.unwindT)
       if (path.length > 1 && t > 0) {
-        const w = Math.max(6, cell * 0.16)
+        const w = Math.max(u(6), cell * 0.16)
         const segs = path.length - 1
         const tSegs = t * segs
         const lastIdx = Math.floor(tSegs)
@@ -479,7 +479,7 @@ export default class PlayScene extends Phaser.Scene {
       }
 
       if (basePoints.length > 0) {
-        const w = Math.max(6, cell * 0.16)
+        const w = Math.max(u(6), cell * 0.16)
         g.lineStyle(w, C.line, 1)
         g.beginPath()
         const [sx, sy] = this.center(basePoints[0]!)
@@ -498,7 +498,7 @@ export default class PlayScene extends Phaser.Scene {
       const path = this.round.path
       const t = Math.min(1, (now - this.sweep.t0) / T.sweep)
       if (path.length > 1) {
-        const w = Math.max(6, cell * 0.16)
+        const w = Math.max(u(6), cell * 0.16)
         if (REDUCED) {
           // segment travel is movement — degrade to a whole-path fade-in at the same duration
           g.lineStyle(w, 0xffffff, 0.75 * t)
@@ -529,7 +529,7 @@ export default class PlayScene extends Phaser.Scene {
 
     // benchmark reveal: quiet ink line
     if (this.benchmarkShown && this.level.benchmark.path.length > 1) {
-      g.lineStyle(3, C.ink, 0.35)
+      g.lineStyle(u(3), C.ink, 0.35)
       g.beginPath()
       const [bx, by] = this.center(this.level.benchmark.path[0]!)
       g.moveTo(bx, by)

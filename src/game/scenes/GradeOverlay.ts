@@ -7,7 +7,7 @@ import { loadProgress, recordResult, spendRevealToken } from '../storage'
 import { track } from '../analytics'
 import type PlayScene from './PlayScene'
 import { TEXT_RESOLUTION } from '../ui'
-import { C, CS, F, T, REDUCED } from '../theme'
+import { C, CS, F, T, REDUCED, u } from '../theme'
 import { sfx } from '../sfx'
 import levelsJson from '../../levels/levels.json'
 
@@ -29,8 +29,8 @@ export default class GradeOverlay extends Phaser.Scene {
     const starY = height * 0.16
     for (let i = 0; i < 3; i++) {
       const earned = i < grade.stars
-      const star = this.add.text(cx + (i - 1) * 44, starY, earned ? '★' : '☆', {
-        fontSize: '34px', color: earned ? CS.door : CS.hair, resolution: TEXT_RESOLUTION,
+      const star = this.add.text(cx + (i - 1) * u(44), starY, earned ? '★' : '☆', {
+        fontSize: `${u(34)}px`, color: earned ? CS.door : CS.hair, resolution: TEXT_RESOLUTION,
       }).setOrigin(0.5).setScale(REDUCED ? 1 : 0.4).setAlpha(0)
       this.time.delayedCall(i * T.starStagger, () => {
         this.tweens.add(REDUCED
@@ -40,28 +40,28 @@ export default class GradeOverlay extends Phaser.Scene {
       })
     }
 
-    const solved = this.add.text(cx, starY + 58, 'Solved.', {
-      fontFamily: F.serif, fontSize: '34px', color: CS.ink, resolution: TEXT_RESOLUTION,
+    const solved = this.add.text(cx, starY + u(58), 'Solved.', {
+      fontFamily: F.serif, fontSize: `${u(34)}px`, color: CS.ink, resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setAlpha(0)
     this.tweens.add({ targets: solved, alpha: 1, duration: T.solvedFade, delay: 3 * T.starStagger })
 
-    this.add.text(cx, starY + 92, `${grade.percent}% of the best-known route`, {
-      fontFamily: F.sans, fontSize: '14px', color: CS.sub, resolution: TEXT_RESOLUTION,
+    this.add.text(cx, starY + u(92), `${grade.percent}% of the best-known route`, {
+      fontFamily: F.sans, fontSize: `${u(14)}px`, color: CS.sub, resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5)
-    this.add.text(cx, starY + 112, `${grade.graysCovered} of ${level.benchmark.grays} loot · ${grade.hint}`, {
-      fontFamily: F.sans, fontSize: '12px', color: CS.sub, resolution: TEXT_RESOLUTION,
+    this.add.text(cx, starY + u(112), `${grade.graysCovered} of ${level.benchmark.grays} loot · ${grade.hint}`, {
+      fontFamily: F.sans, fontSize: `${u(12)}px`, color: CS.sub, resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5)
 
     // route thumbnail: framed card with a miniature of the finished board and the player's path
-    this.drawThumbnail(cx, starY + 210, Math.min(170, width * 0.45), playScene)
+    this.drawThumbnail(cx, starY + u(210), Math.min(u(170), width * 0.45), playScene)
 
     // buttons
     const pill = (y: number, label: string, primary: boolean, onTap: () => void) => {
-      const w = Math.min(300, width - 52)
-      const bg = this.add.rectangle(cx, y, w, 44, primary ? C.ink : C.card).setStrokeStyle(1, primary ? C.ink : C.hair)
+      const w = Math.min(u(300), width - u(52))
+      const bg = this.add.rectangle(cx, y, w, u(44), primary ? C.ink : C.card).setStrokeStyle(u(1), primary ? C.ink : C.hair)
       bg.setInteractive({ useHandCursor: true }).on('pointerdown', onTap)
       this.add.text(cx, y, label, {
-        fontFamily: F.sans, fontSize: '15px', fontStyle: 'bold', color: primary ? CS.paper : CS.ink, resolution: TEXT_RESOLUTION,
+        fontFamily: F.sans, fontSize: `${u(15)}px`, fontStyle: 'bold', color: primary ? CS.paper : CS.ink, resolution: TEXT_RESOLUTION,
       }).setOrigin(0.5)
     }
 
@@ -74,8 +74,8 @@ export default class GradeOverlay extends Phaser.Scene {
       ? campaignData.campaign[campaignIdx + 1]!
       : null
 
-    const ys = [height - 260, height - 208, height - 156, height - 104]
-    if (canShare) ys.push(height - 52)
+    const ys = [height - u(260), height - u(208), height - u(156), height - u(104)]
+    if (canShare) ys.push(height - u(52))
 
     pill(ys[0]!, 'Next puzzle', true, () => {
       this.scene.stop(); playScene.scene.stop()
@@ -103,11 +103,11 @@ export default class GradeOverlay extends Phaser.Scene {
 
     // rounded card with the same faux shadow offset used on the board's own cell cards
     g.fillStyle(C.ink, 0.06)
-    g.fillRoundedRect(ox, oy + 2, size, size, 14)
+    g.fillRoundedRect(ox, oy + u(2), size, size, u(14))
     g.fillStyle(C.card, 1)
-    g.fillRoundedRect(ox, oy, size, size, 14)
-    g.lineStyle(1, C.hair, 1)
-    g.strokeRoundedRect(ox, oy, size, size, 14)
+    g.fillRoundedRect(ox, oy, size, size, u(14))
+    g.lineStyle(u(1), C.hair, 1)
+    g.strokeRoundedRect(ox, oy, size, size, u(14))
 
     const cellMini = size / n
     const dotR = cellMini * 0.22
@@ -121,10 +121,10 @@ export default class GradeOverlay extends Phaser.Scene {
       if (base === 'start') { g.fillStyle(C.go, 1); g.fillCircle(x, y, dotR) }
       else if (base === 'exit') {
         g.fillStyle(C.ink, 1); g.fillCircle(x, y, dotR * 0.32)
-        g.lineStyle(Math.max(1, dotR * 0.3), C.ink, 1); g.strokeCircle(x, y, dotR * 0.82)
+        g.lineStyle(Math.max(u(1), dotR * 0.3), C.ink, 1); g.strokeCircle(x, y, dotR * 0.82)
       } else if (base === 'yellow' && eff === 'empty') {
         g.fillStyle(C.paper, 1); g.fillCircle(x, y, dotR * 0.75)
-        g.lineStyle(Math.max(1, dotR * 0.3), C.door, 1); g.strokeCircle(x, y, dotR * 0.75)
+        g.lineStyle(Math.max(u(1), dotR * 0.3), C.door, 1); g.strokeCircle(x, y, dotR * 0.75)
       } else if (eff === 'yellow') { g.fillStyle(C.door, 0.45); g.fillCircle(x, y, dotR) }
       else if (eff === 'red') { g.fillStyle(C.hazard, 1); g.fillCircle(x, y, dotR) }
       else if (base === 'gray') {
@@ -132,7 +132,7 @@ export default class GradeOverlay extends Phaser.Scene {
         g.fillStyle(C.loot, onPath ? 0.4 : 1); g.fillCircle(x, y, dotR * 0.85)
       } else if (base === 'mid') {
         const onPath = round.path.some((q) => samePos(q, p))
-        g.lineStyle(1.5, C.line, onPath ? 0.4 : 1)
+        g.lineStyle(u(1.5), C.line, onPath ? 0.4 : 1)
         g.strokeCircle(x, y, cellMini * 0.18)
       }
       // empty: skip, no dot

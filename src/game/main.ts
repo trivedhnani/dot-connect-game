@@ -4,10 +4,18 @@ import GradeOverlay from './scenes/GradeOverlay'
 import LevelSelect from './scenes/LevelSelect'
 import HowToPlay from './scenes/HowToPlay'
 
-new Phaser.Game({
+const DPR = Math.min(window.devicePixelRatio || 1, 3)
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#f3f1ed',
-  scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
+  scale: {
+    mode: Phaser.Scale.NONE,
+    width: window.innerWidth * DPR,
+    height: window.innerHeight * DPR,
+    zoom: 1 / DPR,
+  },
   scene: [LevelSelect, PlayScene, GradeOverlay, HowToPlay],  // first scene auto-starts
 })
+window.addEventListener('resize', () =>
+  game.scale.resize(window.innerWidth * DPR, window.innerHeight * DPR))

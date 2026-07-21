@@ -1,1 +1,1 @@
-export const TEXT_RESOLUTION = Math.min(window.devicePixelRatio || 1, 3)
+export const TEXT_RESOLUTION = 1

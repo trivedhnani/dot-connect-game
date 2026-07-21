@@ -217,9 +217,10 @@ export default class PlayScene extends Phaser.Scene {
     this.prePathSnapshot = [...this.round.path]
     const res = tryMove(this.round, pos)
     if (res.kind === 'moved' || res.kind === 'activated') {
-      // re-drawing forward into a cell that's still shown as a retract ghost: the logical
-      // line has caught back up to it, so drop the ghost immediately rather than let it fight
-      if (this.retractCells.some((q) => samePos(q, pos))) { this.retractCells = []; this.retractLen = 0 }
+      // any forward move invalidates the retract ghost: its cells hang off the OLD tip, so a
+      // ghost surviving a new move can draw a diagonal to a now-non-adjacent cell
+      this.retractCells = []
+      this.retractLen = 0
       this.pops.set(pos.r + ',' + pos.c, this.time.now)
       sfx.tick(this.round.path.length)
       haptic.cell()

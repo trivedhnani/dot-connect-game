@@ -42,11 +42,11 @@ export default class LevelSelect extends Phaser.Scene {
     daily.setInteractive({ useHandCursor: true }).on('pointerdown', () => { track('daily_start', { id: dailyLevel.id }); this.scene.start('play', { level: dailyLevel }) })
 
     // campaign eyebrow + tile grid — a centered content column, always 4 cols, scrollable
-    const eyebrow = this.add.text(colX, 164, 'CAMPAIGN', { fontFamily: F.sans, fontSize: '11px', color: CS.sub, letterSpacing: 2, resolution: TEXT_RESOLUTION })
+    this.add.text(colX, 164, 'CAMPAIGN', { fontFamily: F.sans, fontSize: '11px', color: CS.sub, letterSpacing: 2, resolution: TEXT_RESOLUTION })
     const cols = 4
     const rows = Math.ceil(data.campaign.length / cols)
     const tile = (colW - (cols - 1) * 10) / cols
-    const gridChildren: Phaser.GameObjects.GameObject[] = [eyebrow]
+    const gridChildren: Phaser.GameObjects.GameObject[] = []
     const lockG = this.add.graphics()
     lockG.lineStyle(2, C.loot, 1)
     lockG.fillStyle(C.loot, 1)

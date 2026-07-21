@@ -133,7 +133,7 @@ export default class PlayScene extends Phaser.Scene {
     this.iconButton(46, by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } }))
     this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') })
     this.iconButton(width - 46, by, '↻', () => {
-      if (this.round.status !== 'playing' || this.unwinding) return
+      if (this.round.status !== 'playing' || this.unwinding || this.rewindAnim !== null) return
       track('level_restart', { id: this.level.id })
       sfx.brush(); haptic.restart()
       if (REDUCED) { this.scene.restart({ level: this.level } as never); return }
@@ -244,7 +244,7 @@ export default class PlayScene extends Phaser.Scene {
       this.rewindAnim = { cells: removed, t0: this.time.now }
       this.inputLocked = true
       removed.forEach((_, i) => this.time.delayedCall(i * T.rewindPerCell, () => sfx.tickDown(removed.length - i)))
-      this.time.delayedCall(removed.length * T.rewindPerCell, () => { this.rewindAnim = null; this.inputLocked = false })
+      this.time.delayedCall(removed.length * T.rewindPerCell, () => { if (this.rewindAnim) { this.rewindAnim = null; this.inputLocked = false } })
       this.dragging = false
     }
     if (res.kind === 'won') this.onWon()

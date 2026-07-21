@@ -247,6 +247,8 @@ export default class PlayScene extends Phaser.Scene {
 
   showBenchmark() { this.benchmarkShown = true; this.redraw(this.time.now) }
 
+  getRound(): RoundState { return this.round }
+
   private drawDot(x: number, y: number, r: number, color: number, ring?: number, ringGap = 4, ringAlpha = 1) {
     if (r < 0.4) return
     this.g.fillStyle(color, 1)

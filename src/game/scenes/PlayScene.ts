@@ -5,11 +5,7 @@ import { samePos } from '../../engine/board'
 import type { Level, Pos, RoundState } from '../../engine/types'
 import { track } from '../analytics'
 import { TEXT_RESOLUTION } from '../ui'
-
-const C = {
-  cellBg: 0x1b1b26, empty: 0x33334a, gray: 0x9aa0b4, yellow: 0xe8c34a,
-  red: 0xe14b4b, green: 0x4be18a, mid: 0x4bd6e1, path: 0x4be18a, benchmark: 0xffffff,
-}
+import { C, CS, F, T, REDUCED } from '../theme'
 
 export default class PlayScene extends Phaser.Scene {
   private level!: Level
@@ -30,16 +26,16 @@ export default class PlayScene extends Phaser.Scene {
     const hudFont = this.scale.width < 520 ? 12 : 16
     const home = this.add.text(this.scale.width - 10, 8, '⌂ levels', {
       fontSize: `${hudFont}px`,
-      color: '#cfd3e0',
-      backgroundColor: '#26263a',
+      color: CS.ink,
+      backgroundColor: CS.card,
       padding: { x: 10, y: 6 },
       resolution: TEXT_RESOLUTION,
     }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => { this.scene.stop('grade'); this.scene.start('select') })
     const restart = this.add.text(this.scale.width - 10 - home.displayWidth - 8, 8, '↻ restart', {
       fontSize: `${hudFont}px`,
-      color: '#cfd3e0',
-      backgroundColor: '#26263a',
+      color: CS.ink,
+      backgroundColor: CS.card,
       padding: { x: 10, y: 6 },
       resolution: TEXT_RESOLUTION,
     }).setOrigin(1, 0).setDepth(10).setInteractive({ useHandCursor: true })
@@ -50,8 +46,8 @@ export default class PlayScene extends Phaser.Scene {
       })
     this.hud = this.add.text(12, 10, '', {
       fontSize: `${hudFont}px`,
-      color: '#cfd3e0',
-      fontFamily: 'monospace',
+      color: CS.ink,
+      fontFamily: F.sans,
       wordWrap: { width: restart.getBounds().left - 24 },
       resolution: TEXT_RESOLUTION,
     })
@@ -120,43 +116,55 @@ export default class PlayScene extends Phaser.Scene {
 
   showBenchmark() { this.benchmarkShown = true; this.redraw() }
 
+  private drawDot(x: number, y: number, r: number, color: number, ring?: number, ringGap = 4, ringAlpha = 1) {
+    if (r < 0.4) return
+    this.g.fillStyle(color, 1)
+    this.g.fillCircle(x, y, r)
+    if (ring !== undefined) {
+      this.g.lineStyle(2.5, ring, ringAlpha)
+      this.g.strokeCircle(x, y, r + ringGap)
+    }
+  }
+
   private redraw() {
     const { cell, ox, oy, size } = this.layout()
     const g = this.g
     g.clear()
-    const dotR = Math.max(6, cell * 0.28)
+    const dotR = Math.max(7, cell * 0.24)
     for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
       const p = { r, c }
-      g.fillStyle(C.cellBg, 1)
-      g.fillRoundedRect(ox + c * cell + 2, oy + r * cell + 2, cell - 4, cell - 4, 6)
+      // card cell with a faux shadow (Phaser Graphics has no blur — offset ink at low alpha)
+      g.fillStyle(C.ink, 0.06)
+      g.fillRoundedRect(ox + c * cell + 3, oy + r * cell + 5, cell - 6, cell - 6, 11)
+      g.fillStyle(C.card, 1)
+      g.fillRoundedRect(ox + c * cell + 3, oy + r * cell + 3, cell - 6, cell - 6, 11)
       const base = this.round.cells[r]![c]!
       const eff = effectiveKind(this.round, p)
       const activated = base === 'yellow' && eff === 'empty'
       const grayTaken = base === 'gray' && this.round.path.some((q) => samePos(q, p))
-      const color =
-        base === 'start' || base === 'exit' || activated ? C.green
-        : base === 'mid' ? C.mid
-        : eff === 'red' ? C.red
-        : eff === 'yellow' ? C.yellow
-        : base === 'gray' ? C.gray
-        : C.empty
       const [x, y] = this.center(p)
-      g.fillStyle(color, base === 'empty' ? 0.5 : grayTaken ? 0.35 : 1)
-      g.fillCircle(x, y, base === 'empty' ? dotR * 0.4 : dotR)
-      if (base === 'exit') { g.lineStyle(3, C.green, 1); g.strokeCircle(x, y, dotR + 5) }
+      if (base === 'start') this.drawDot(x, y, dotR, C.go)
+      else if (base === 'exit') { this.drawDot(x, y, dotR * 0.32, C.ink); this.g.lineStyle(2.5, C.ink, 1); this.g.strokeCircle(x, y, dotR * 0.82) }
+      else if (activated) this.drawDot(x, y, dotR * 0.75, C.paper, C.door, 3)
+      else if (eff === 'yellow') this.drawDot(x, y, dotR, C.door, C.door, 4, 0.45)
+      else if (eff === 'red') this.drawDot(x, y, dotR, C.hazard)
+      else if (base === 'gray') { g.fillStyle(C.loot, grayTaken ? 0.4 : 1); g.fillCircle(x, y, dotR * 0.85) }
+      else { g.fillStyle(C.emptyDot, 1); g.fillCircle(x, y, 3.5) }
     }
-    // path
+    // the line: blue with round joints (circle at every vertex)
     if (this.round.path.length > 1) {
-      g.lineStyle(Math.max(5, cell * 0.16), C.path, 0.9)
+      const w = Math.max(6, cell * 0.16)
+      g.lineStyle(w, C.line, 1)
       g.beginPath()
       const [sx, sy] = this.center(this.round.path[0]!)
       g.moveTo(sx, sy)
       for (const p of this.round.path.slice(1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
       g.strokePath()
+      for (const p of this.round.path) { const [x, y] = this.center(p); g.fillStyle(C.line, 1); g.fillCircle(x, y, w / 2) }
     }
-    // benchmark reveal
+    // benchmark reveal: quiet ink line
     if (this.benchmarkShown && this.level.benchmark.path.length > 1) {
-      g.lineStyle(3, C.benchmark, 0.8)
+      g.lineStyle(3, C.ink, 0.35)
       g.beginPath()
       const [bx, by] = this.center(this.level.benchmark.path[0]!)
       g.moveTo(bx, by)
@@ -164,7 +172,6 @@ export default class PlayScene extends Phaser.Scene {
       g.strokePath()
     }
     const doorsLeft = this.round.level.yellowBudget - this.round.yellowsUsed
-    this.hud.setText(
-      `${this.level.id}   lives ${'♥'.repeat(Math.max(0, this.round.lives))}   doors left ${doorsLeft}${this.round.flipped ? '  ⚠ FLIPPED' : ''}`)
+    this.hud.setText(`${this.level.id}   lives ${'♥'.repeat(Math.max(0, this.round.lives))}   doors left ${doorsLeft}${this.round.flipped ? '  DOORS SEALED' : ''}`)
   }
 }

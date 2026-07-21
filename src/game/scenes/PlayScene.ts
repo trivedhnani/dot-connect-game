@@ -41,6 +41,7 @@ export default class PlayScene extends Phaser.Scene {
   private headX = 0
   private headY = 0
   private pops = new Map<string, number>()
+  private lootFades = new Map<string, number>()
   private lastLives = 0
   private doorDrains = new Map<string, number>()
   private flipFades = new Map<string, number>()
@@ -51,6 +52,8 @@ export default class PlayScene extends Phaser.Scene {
   private sweep: { t0: number } | null = null
   private inputLocked = false
   private prePathSnapshot: Pos[] = []
+  private unwinding = false
+  private unwindT = 0
 
   constructor() { super('play') }
 
@@ -63,6 +66,7 @@ export default class PlayScene extends Phaser.Scene {
     this.headX = hx
     this.headY = hy
     this.pops = new Map()
+    this.lootFades = new Map()
     this.lastLives = this.round.lives
     this.doorDrains = new Map()
     this.flipFades = new Map()
@@ -71,6 +75,8 @@ export default class PlayScene extends Phaser.Scene {
     this.sweep = null
     this.inputLocked = false
     this.prePathSnapshot = []
+    this.unwinding = false
+    this.unwindT = 0
     this.g = this.add.graphics()
     this.buildHud()
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })
@@ -84,14 +90,14 @@ export default class PlayScene extends Phaser.Scene {
     // level intro: dots pop in group by group (grays, reds, doors, start/exit); tap skips
     this.intro = { t0: this.time.now + T.introLead }
     this.inputLocked = true
-    const groups = [findCells(this.round.cells, 'gray'), findCells(this.round.cells, 'red'),
+    const groups = [[...findCells(this.round.cells, 'gray'), ...findCells(this.round.cells, 'mid')], findCells(this.round.cells, 'red'),
       findCells(this.round.cells, 'yellow'),
       [...findCells(this.round.cells, 'start'), ...findCells(this.round.cells, 'exit')]]
     this.introDelay = new Map<string, number>()
     groups.forEach((grp, gi) => grp.forEach((p, i) => this.introDelay.set(p.r + ',' + p.c, gi * T.introGroup + i * T.introWithin)))
-    groups.forEach((_, gi) => this.time.delayedCall(T.introLead + gi * T.introGroup, () => { sfx.tick(gi * 4); haptic.intro() }))
+    groups.forEach((_, gi) => this.time.delayedCall(T.introLead + gi * T.introGroup, () => { if (this.intro) { sfx.tick(gi * 4); haptic.intro() } }))
     const total = T.introLead + 3 * T.introGroup + T.introWithin + T.introDot
-    this.time.delayedCall(total, () => { this.intro = null; this.inputLocked = false })
+    this.time.delayedCall(total, () => { if (this.intro) { this.intro = null; this.inputLocked = false } })
     this.input.once('pointerdown', () => { this.intro = null; this.inputLocked = false }) // tap skips
 
     this.redraw(this.time.now)
@@ -127,10 +133,20 @@ export default class PlayScene extends Phaser.Scene {
     this.iconButton(46, by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } }))
     this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') })
     this.iconButton(width - 46, by, '↻', () => {
-      if (this.round.status !== 'playing') return
+      if (this.round.status !== 'playing' || this.unwinding) return
       track('level_restart', { id: this.level.id })
       sfx.brush(); haptic.restart()
-      this.scene.restart({ level: this.level } as never)
+      if (REDUCED) { this.scene.restart({ level: this.level } as never); return }
+      this.inputLocked = true
+      this.unwinding = true
+      this.unwindT = 0
+      this.tweens.add({
+        targets: this,
+        unwindT: 1,
+        duration: T.unwind,
+        ease: 'Cubic.easeIn',
+        onComplete: () => this.scene.restart({ level: this.level } as never),
+      })
     })
     this.syncHud()
   }
@@ -189,6 +205,10 @@ export default class PlayScene extends Phaser.Scene {
       this.pops.set(pos.r + ',' + pos.c, this.time.now)
       sfx.tick(this.round.path.length)
       haptic.cell()
+      if (this.round.cells[pos.r]![pos.c]! === 'gray') {
+        sfx.pip()
+        this.lootFades.set(pos.r + ',' + pos.c, this.time.now)
+      }
     }
     if (res.kind === 'retracted') sfx.tickDown(this.round.path.length)
     if (res.kind === 'rejected' && res.reason === 'visited') {
@@ -341,7 +361,19 @@ export default class PlayScene extends Phaser.Scene {
           if (fadeT0 !== undefined) this.flipFades.delete(key)
           this.drawDot(x, y, dotR * iS * rScale, C.hazard)
         }
-      } else if (base === 'gray') { g.fillStyle(C.loot, grayTaken ? 0.4 : 1); g.fillCircle(x, y, dotR * 0.85 * iS) }
+      } else if (base === 'gray') {
+        const t0 = this.lootFades.get(key)
+        let alpha = grayTaken ? 0.4 : 1
+        if (t0 !== undefined) {
+          if (grayTaken) alpha = 1 - 0.6 * Math.min(1, (now - t0) / T.lootFade)
+          else this.lootFades.delete(key)
+        }
+        g.fillStyle(C.loot, alpha); g.fillCircle(x, y, dotR * 0.85 * iS)
+      } else if (base === 'mid') {
+        const midOnPath = this.round.path.some((q) => samePos(q, p))
+        this.g.lineStyle(2.5, C.line, midOnPath ? 0.4 : 1)
+        this.g.strokeCircle(x, y, dotR * 0.8 * iS)
+      }
       else { g.fillStyle(C.emptyDot, 1); g.fillCircle(x, y, 3.5 * iS) }
     }
 
@@ -357,20 +389,43 @@ export default class PlayScene extends Phaser.Scene {
     }
 
     // the line: blue with round joints (circle at every vertex); the head glides to the tip
-    const pathForLine = [...this.round.path, ...tail]
-    if (pathForLine.length > 1) {
-      const w = Math.max(6, cell * 0.16)
-      g.lineStyle(w, C.line, 1)
-      g.beginPath()
-      const [sx, sy] = this.center(pathForLine[0]!)
-      g.moveTo(sx, sy)
-      for (const p of pathForLine.slice(1, -1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
-      const [lx, ly] = tail.length > 0 ? this.center(pathForLine[pathForLine.length - 1]!) : [this.headX, this.headY]
-      g.lineTo(lx, ly)
-      g.strokePath()
-      for (const p of pathForLine.slice(0, -1)) { const [x, y] = this.center(p); g.fillStyle(C.line, 1); g.fillCircle(x, y, w / 2) }
-      g.fillStyle(C.line, 1)
-      g.fillCircle(lx, ly, w / 2)
+    if (this.unwinding) {
+      // restart unwind: the line retreats from the tip back to the start (reuses the sweep's partial-polyline interpolation)
+      const path = this.round.path
+      const t = Math.max(0, 1 - this.unwindT)
+      if (path.length > 1 && t > 0) {
+        const w = Math.max(6, cell * 0.16)
+        const segs = path.length - 1
+        const tSegs = t * segs
+        const lastIdx = Math.floor(tSegs)
+        g.lineStyle(w, C.line, 1)
+        g.beginPath()
+        const [sx, sy] = this.center(path[0]!)
+        g.moveTo(sx, sy)
+        for (let i = 1; i <= lastIdx; i++) { const [x, y] = this.center(path[i]!); g.lineTo(x, y) }
+        const [ex, ey] = this.pointAtT(path, t)
+        g.lineTo(ex, ey)
+        g.strokePath()
+        for (let i = 0; i <= lastIdx; i++) { const [x, y] = this.center(path[i]!); g.fillStyle(C.line, 1); g.fillCircle(x, y, w / 2) }
+        g.fillStyle(C.line, 1)
+        g.fillCircle(ex, ey, w / 2)
+      }
+    } else {
+      const pathForLine = [...this.round.path, ...tail]
+      if (pathForLine.length > 1) {
+        const w = Math.max(6, cell * 0.16)
+        g.lineStyle(w, C.line, 1)
+        g.beginPath()
+        const [sx, sy] = this.center(pathForLine[0]!)
+        g.moveTo(sx, sy)
+        for (const p of pathForLine.slice(1, -1)) { const [x, y] = this.center(p); g.lineTo(x, y) }
+        const [lx, ly] = tail.length > 0 ? this.center(pathForLine[pathForLine.length - 1]!) : [this.headX, this.headY]
+        g.lineTo(lx, ly)
+        g.strokePath()
+        for (const p of pathForLine.slice(0, -1)) { const [x, y] = this.center(p); g.fillStyle(C.line, 1); g.fillCircle(x, y, w / 2) }
+        g.fillStyle(C.line, 1)
+        g.fillCircle(lx, ly, w / 2)
+      }
     }
 
     // win sweep: a bright segment travels the solved path once before the grade overlay opens

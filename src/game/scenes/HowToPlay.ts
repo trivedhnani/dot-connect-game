@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { TEXT_RESOLUTION } from '../ui'
 import { C, CS, F } from '../theme'
 
-type GlossaryDot = 'go' | 'loot' | 'door' | 'hazard' | 'grade'
+type GlossaryDot = 'go' | 'loot' | 'door' | 'mid' | 'hazard' | 'grade'
 
 interface GlossaryRow {
   dot: GlossaryDot
@@ -14,6 +14,7 @@ const ROWS: GlossaryRow[] = [
   { dot: 'go', term: 'Start & exit', desc: 'Draw from the green dot to the ink ring. Drag back to undo — always free.' },
   { dot: 'loot', term: 'Loot', desc: 'Never needed to finish — but most of your score. Grab what your route allows; every one is usually impossible.' },
   { dot: 'door', term: 'Doors', desc: 'Entering one spends a door point, permanently — the door goes hollow and stays open. Spend your last and every other door turns red.' },
+  { dot: 'mid', term: 'Waypoints', desc: 'Your line must pass through every one before the exit opens.' },
   { dot: 'hazard', term: 'Hazards', desc: 'Cost a life and rewind you to your last door. A fresh start is always free: ↻.' },
   { dot: 'grade', term: 'The grade', desc: 'Every win is scored against the best-known route. 60% ★ · 80% ★★ · 95% ★★★.' },
 ]
@@ -56,6 +57,7 @@ export default class HowToPlay extends Phaser.Scene {
           g.fillStyle(C.door, 1).fillCircle(iconCx, dotCy, 13)
           g.lineStyle(2.5, C.door, 0.45).strokeCircle(iconCx, dotCy, 17)
           break
+        case 'mid': g.lineStyle(2.5, C.line, 1).strokeCircle(iconCx, dotCy, 13); break
         case 'hazard': g.fillStyle(C.hazard, 1).fillCircle(iconCx, dotCy, 13); break
         case 'grade':
           g.fillStyle(C.ink, 1).fillCircle(iconCx, dotCy, 5)

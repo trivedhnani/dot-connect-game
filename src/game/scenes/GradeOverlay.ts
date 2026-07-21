@@ -9,6 +9,9 @@ import type PlayScene from './PlayScene'
 import { TEXT_RESOLUTION } from '../ui'
 import { C, CS, F, T, REDUCED } from '../theme'
 import { sfx } from '../sfx'
+import levelsJson from '../../levels/levels.json'
+
+const campaignData = levelsJson as unknown as { campaign: Level[]; daily: Level[] }
 
 export default class GradeOverlay extends Phaser.Scene {
   constructor() { super('grade') }
@@ -66,17 +69,26 @@ export default class GradeOverlay extends Phaser.Scene {
     const tokens = loadProgress().revealTokens
     let canShare = false
     try { canShare = typeof (globalThis.navigator as Navigator | undefined)?.share === 'function' } catch { canShare = false }
-    const ys = canShare
-      ? [height - 220, height - 168, height - 116, height - 64]
-      : [height - 168, height - 116, height - 64]
+    const campaignIdx = campaignData.campaign.findIndex((l) => l.id === level.id)
+    const nextLevel = level.id.startsWith('c') && campaignIdx >= 0 && campaignIdx + 1 < campaignData.campaign.length
+      ? campaignData.campaign[campaignIdx + 1]!
+      : null
 
-    pill(ys[0]!, 'Next puzzle', true, () => { this.scene.stop(); playScene.scene.stop(); this.scene.start('select') })
+    const ys = [height - 260, height - 208, height - 156, height - 104]
+    if (canShare) ys.push(height - 52)
+
+    pill(ys[0]!, 'Next puzzle', true, () => {
+      this.scene.stop(); playScene.scene.stop()
+      if (nextLevel) this.scene.start('play', { level: nextLevel })
+      else this.scene.start('select')
+    })
     pill(ys[1]!, freeReveal ? 'Reveal best path (free)' : `Reveal best path (${tokens} left)`, false, () => {
       if (freeReveal || spendRevealToken()) { track('reveal_used', { id: level.id }); playScene.showBenchmark(); this.scene.stop() }
     })
     pill(ys[2]!, 'Replay', false, () => { this.scene.stop(); playScene.scene.restart({ level } as never) })
+    pill(ys[3]!, 'Levels', false, () => { this.scene.stop(); playScene.scene.stop(); this.scene.start('select') })
     if (canShare) {
-      pill(ys[3]!, 'Share', false, () => {
+      pill(ys[4]!, 'Share', false, () => {
         void navigator.share({ text: `Dot Connect ${level.id}: ${grade.percent}% of the best route, ${'★'.repeat(grade.stars)}` }).catch(() => {})
       })
     }
@@ -118,6 +130,10 @@ export default class GradeOverlay extends Phaser.Scene {
       else if (base === 'gray') {
         const onPath = round.path.some((q) => samePos(q, p))
         g.fillStyle(C.loot, onPath ? 0.4 : 1); g.fillCircle(x, y, dotR * 0.85)
+      } else if (base === 'mid') {
+        const onPath = round.path.some((q) => samePos(q, p))
+        g.lineStyle(1.5, C.line, onPath ? 0.4 : 1)
+        g.strokeCircle(x, y, cellMini * 0.18)
       }
       // empty: skip, no dot
     }

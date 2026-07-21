@@ -20,6 +20,8 @@ export default class LevelSelect extends Phaser.Scene {
     const progress = loadProgress()
     const narrow = width < 520
     const cx = width / 2
+    const colW = Math.min(440, width - 24)
+    const colX = (width - colW) / 2
 
     // masthead
     this.add.rectangle(cx, 30, 46, 2, C.ink)
@@ -39,30 +41,61 @@ export default class LevelSelect extends Phaser.Scene {
     this.add.text(cx + cardW / 2 - 22, 122, '→', { fontSize: '18px', color: CS.line, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
     daily.setInteractive({ useHandCursor: true }).on('pointerdown', () => { track('daily_start', { id: dailyLevel.id }); this.scene.start('play', { level: dailyLevel }) })
 
-    // campaign eyebrow + tile grid
-    this.add.text(20, 164, 'CAMPAIGN', { fontFamily: F.sans, fontSize: '11px', color: CS.sub, letterSpacing: 2, resolution: TEXT_RESOLUTION })
-    const cols = narrow ? 4 : 8
+    // campaign eyebrow + tile grid — a centered content column, always 4 cols, scrollable
+    const eyebrow = this.add.text(colX, 164, 'CAMPAIGN', { fontFamily: F.sans, fontSize: '11px', color: CS.sub, letterSpacing: 2, resolution: TEXT_RESOLUTION })
+    const cols = 4
     const rows = Math.ceil(data.campaign.length / cols)
-    const tile = Math.max(34, Math.min(
-      72,
-      (Math.min(width, 520) - 20 - (cols - 1) * 10) / cols,
-      (height - 300) / rows - 10,
-    ))
+    const tile = (colW - (cols - 1) * 10) / cols
+    const gridChildren: Phaser.GameObjects.GameObject[] = [eyebrow]
+    const lockG = this.add.graphics()
+    lockG.lineStyle(2, C.loot, 1)
+    lockG.fillStyle(C.loot, 1)
     data.campaign.forEach((level, i) => {
-      const x = cx - ((cols * tile + (cols - 1) * 10) / 2) + (i % cols) * (tile + 10) + tile / 2
+      const x = colX + (i % cols) * (tile + 10) + tile / 2
       const y = 196 + Math.floor(i / cols) * (tile + 10) + tile / 2
       const starsEarned = progress.stars[level.id] ?? 0
       const unlocked = i === 0 || (progress.stars[data.campaign[i - 1]!.id] ?? 0) >= 1
       const isCurrent = unlocked && starsEarned === 0
+      const shadow = this.add.rectangle(x, y + 2, tile, tile, C.ink).setAlpha(0.06)
       const rect = this.add.rectangle(x, y, tile, tile, C.card).setStrokeStyle(isCurrent ? 1.5 : 1, isCurrent ? C.line : C.hair)
+      gridChildren.push(shadow, rect)
       if (!unlocked) rect.setAlpha(0.45)
-      this.add.text(x, y - (starsEarned ? 6 : 0), unlocked ? String(i + 1) : '🔒', {
-        fontFamily: F.sans, fontSize: '15px', fontStyle: unlocked ? 'bold' : 'normal',
-        color: isCurrent ? CS.line : unlocked ? CS.ink : CS.sub, resolution: TEXT_RESOLUTION,
-      }).setOrigin(0.5).setAlpha(unlocked ? 1 : 0.6)
-      if (starsEarned > 0) this.add.text(x, y + 12, '★'.repeat(starsEarned) + '☆'.repeat(3 - starsEarned),
-        { fontSize: '9px', color: CS.door, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
-      if (unlocked) rect.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.scene.start('play', { level }))
+      if (unlocked) {
+        const label = this.add.text(x, y - (starsEarned ? 6 : 0), String(i + 1), {
+          fontFamily: F.sans, fontSize: '15px', fontStyle: 'bold',
+          color: isCurrent ? CS.line : CS.ink, resolution: TEXT_RESOLUTION,
+        }).setOrigin(0.5)
+        gridChildren.push(label)
+      } else {
+        lockG.beginPath()
+        lockG.arc(x, y - tile * 0.06, tile * 0.11, Math.PI, 0, false)
+        lockG.strokePath()
+        lockG.fillRoundedRect(x - tile * 0.15, y - tile * 0.02, tile * 0.3, tile * 0.22, 3)
+      }
+      if (starsEarned > 0) {
+        const starText = this.add.text(x, y + 12, '★'.repeat(starsEarned) + '☆'.repeat(3 - starsEarned),
+          { fontSize: '11px', color: CS.door, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
+        gridChildren.push(starText)
+      }
+      if (unlocked) rect.setInteractive({ useHandCursor: true }).on('pointerup', (pointer: Phaser.Input.Pointer) => {
+        if (Math.abs(pointer.y - pointer.downY) < 8) this.scene.start('play', { level })
+      })
+    })
+    gridChildren.push(lockG)
+    const gridContainer = this.add.container(0, 0, gridChildren)
+
+    // vertical scroll: drag or wheel over the grid area, clamped so content never scrolls past its bounds
+    const contentBottom = 196 + (rows - 1) * (tile + 10) + tile
+    const minY = Math.min(0, (height - 120) - contentBottom)
+    let lastY = 0
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => { lastY = pointer.y })
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (!pointer.isDown || pointer.downY <= 170) return
+      gridContainer.y = Phaser.Math.Clamp(gridContainer.y + (pointer.y - lastY), minY, 0)
+      lastY = pointer.y
+    })
+    this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _objs: unknown, _dx: number, dy: number) => {
+      gridContainer.y = Phaser.Math.Clamp(gridContainer.y - dy, minY, 0)
     })
 
     // bottom-right cluster

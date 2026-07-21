@@ -16,7 +16,7 @@ export const T = {
   flipBeat: 250, flipStagger: 110, flipFade: 180, noteFade: 240,
   redPulse: 160, heartFade: 200, rewindPerCell: 60,
   sweep: 500, starStagger: 150, solvedFade: 300,
-  introGroup: 140, introWithin: 45, introDot: 220, introLead: 150,
+  introGroup: 140, introWithin: 45, introDot: 220, introLead: 100,
   unwind: 250, headSpringMs: 90,
 } as const
 export const REDUCED: boolean =

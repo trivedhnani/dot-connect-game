@@ -68,9 +68,9 @@ export default class LevelSelect extends Phaser.Scene {
         gridChildren.push(label)
       } else {
         lockG.beginPath()
-        lockG.arc(x, y - tile * 0.06, tile * 0.11, Math.PI, 0, false)
+        lockG.arc(x, y - tile * 0.045, tile * 0.07, Math.PI, 0, false)
         lockG.strokePath()
-        lockG.fillRoundedRect(x - tile * 0.15, y - tile * 0.02, tile * 0.3, tile * 0.22, 3)
+        lockG.fillRoundedRect(x - tile * 0.1, y - tile * 0.045, tile * 0.2, tile * 0.15, 2.5)
       }
       if (starsEarned > 0) {
         const starText = this.add.text(x, y + 12, '★'.repeat(starsEarned) + '☆'.repeat(3 - starsEarned),
@@ -83,6 +83,10 @@ export default class LevelSelect extends Phaser.Scene {
     })
     gridChildren.push(lockG)
     const gridContainer = this.add.container(0, 0, gridChildren)
+    const maskShape = this.make.graphics({}, false)
+    maskShape.fillStyle(0xffffff)
+    maskShape.fillRect(0, 170, this.scale.width, this.scale.height - 170)
+    gridContainer.setMask(maskShape.createGeometryMask())
 
     // vertical scroll: drag or wheel over the grid area, clamped so content never scrolls past its bounds
     const contentBottom = 196 + (rows - 1) * (tile + 10) + tile

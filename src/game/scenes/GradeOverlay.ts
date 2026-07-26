@@ -17,43 +17,59 @@ const campaignData = levelsJson as unknown as { campaign: Level[]; daily: Level[
 export default class GradeOverlay extends Phaser.Scene {
   constructor() { super('grade') }
 
-  create(data: { grade: Grade; level: Level; playScene: PlayScene }) {
-    const { grade, level, playScene } = data
-    recordResult(level.id, grade.percent, grade.stars)
+  create(data: { grade?: Grade; level: Level; playScene: PlayScene; lost?: boolean }) {
+    const { grade, level, playScene, lost } = data
+    if (!lost && grade) recordResult(level.id, grade.percent, grade.stars)
     const { width, height } = this.scale
     const cx = width / 2
 
     // full paper takeover; interactive so taps can never fall through to the board underneath
     this.add.rectangle(0, 0, width * 2, height * 2, C.paper, 1).setOrigin(0).setInteractive()
 
-    // stars stamp in, staggered
     const starY = height * 0.16 + SAFE.top
-    for (let i = 0; i < 3; i++) {
-      const earned = i < grade.stars
-      const star = this.add.text(cx + (i - 1) * u(44), starY, earned ? '★' : '☆', {
-        fontSize: `${u(34)}px`, color: earned ? CS.door : CS.hair, resolution: TEXT_RESOLUTION,
-      }).setOrigin(0.5).setScale(REDUCED ? 1 : 0.4).setAlpha(0)
-      this.time.delayedCall(i * T.starStagger, () => {
-        this.tweens.add(REDUCED
-          ? { targets: star, alpha: 1, duration: 240 }
-          : { targets: star, alpha: 1, scale: 1, duration: 240, ease: 'Back.easeOut' })
-        if (earned) sfx.tick(8 + i * 2)
-      })
+
+    if (lost) {
+      sfx.thud()
+      const hearts = this.add.text(cx, starY, '♡ ♡ ♡', {
+        fontSize: `${u(36)}px`, color: CS.hazard, resolution: TEXT_RESOLUTION, letterSpacing: u(6),
+      }).setOrigin(0.5).setAlpha(0)
+      this.tweens.add({ targets: hearts, alpha: 1, duration: 240 })
+    } else {
+      // stars stamp in, staggered
+      for (let i = 0; i < 3; i++) {
+        const earned = i < grade!.stars
+        const star = this.add.text(cx + (i - 1) * u(44), starY, earned ? '★' : '☆', {
+          fontSize: `${u(34)}px`, color: earned ? CS.door : CS.hair, resolution: TEXT_RESOLUTION,
+        }).setOrigin(0.5).setScale(REDUCED ? 1 : 0.4).setAlpha(0)
+        this.time.delayedCall(i * T.starStagger, () => {
+          this.tweens.add(REDUCED
+            ? { targets: star, alpha: 1, duration: 240 }
+            : { targets: star, alpha: 1, scale: 1, duration: 240, ease: 'Back.easeOut' })
+          if (earned) sfx.tick(8 + i * 2)
+        })
+      }
     }
 
-    const solved = this.add.text(cx, starY + u(58), 'Solved.', {
+    const solved = this.add.text(cx, starY + u(58), lost ? 'Out of lives.' : 'Solved.', {
       fontFamily: F.serif, fontSize: `${u(34)}px`, color: CS.ink, resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5).setAlpha(0)
     this.tweens.add({ targets: solved, alpha: 1, duration: T.solvedFade, delay: 3 * T.starStagger })
 
-    this.add.text(cx, starY + u(92), `${grade.percent}% of the best-known route`, {
-      fontFamily: F.sans, fontSize: `${u(14)}px`, color: CS.sub, resolution: TEXT_RESOLUTION,
-    }).setOrigin(0.5)
-    this.add.text(cx, starY + u(112), `${grade.graysCovered} of ${level.benchmark.grays} loot · ${grade.hint}`, {
-      fontFamily: F.sans, fontSize: `${u(12)}px`, color: CS.sub, resolution: TEXT_RESOLUTION,
-    }).setOrigin(0.5)
+    if (lost) {
+      this.add.text(cx, starY + u(92), 'Every route teaches something.', {
+        fontFamily: F.sans, fontSize: `${u(14)}px`, color: CS.sub, resolution: TEXT_RESOLUTION,
+      }).setOrigin(0.5)
+    } else {
+      this.add.text(cx, starY + u(92), `${grade!.percent}% of the best-known route`, {
+        fontFamily: F.sans, fontSize: `${u(14)}px`, color: CS.sub, resolution: TEXT_RESOLUTION,
+      }).setOrigin(0.5)
+      this.add.text(cx, starY + u(112), `${grade!.graysCovered} of ${level.benchmark.grays} loot · ${grade!.hint}`, {
+        fontFamily: F.sans, fontSize: `${u(12)}px`, color: CS.sub, resolution: TEXT_RESOLUTION,
+      }).setOrigin(0.5)
+    }
 
     // route thumbnail: framed card with a miniature of the finished board and the player's path
+    // (renders the final board state via playScene.getRound() — works for lost rounds as-is)
     this.drawThumbnail(cx, starY + u(210), Math.min(u(170), width * 0.45), playScene)
 
     // buttons
@@ -66,7 +82,7 @@ export default class GradeOverlay extends Phaser.Scene {
       }).setOrigin(0.5)
     }
 
-    const freeReveal = grade.percent >= 95
+    const freeReveal = !lost && grade!.percent >= 95
     const tokens = loadProgress().revealTokens
     let canShare = false
     try { canShare = typeof (globalThis.navigator as Navigator | undefined)?.share === 'function' } catch { canShare = false }
@@ -74,6 +90,16 @@ export default class GradeOverlay extends Phaser.Scene {
     const nextLevel = level.id.startsWith('c') && campaignIdx >= 0 && campaignIdx + 1 < campaignData.campaign.length
       ? campaignData.campaign[campaignIdx + 1]!
       : null
+
+    if (lost) {
+      const ys = [height - u(208) - SAFE.bottom, height - u(156) - SAFE.bottom, height - u(104) - SAFE.bottom]
+      pill(ys[0]!, 'Try again', true, () => { this.scene.stop(); playScene.scene.restart({ level } as never) })
+      pill(ys[1]!, `Reveal best path (${tokens} left)`, false, () => {
+        if (spendRevealToken()) { track('reveal_used', { id: level.id }); playScene.showBenchmark(); this.scene.stop() }
+      })
+      pill(ys[2]!, 'Levels', false, () => { this.scene.stop(); playScene.scene.stop(); this.scene.start('select') })
+      return
+    }
 
     const ys = [height - u(260) - SAFE.bottom, height - u(208) - SAFE.bottom, height - u(156) - SAFE.bottom, height - u(104) - SAFE.bottom]
     if (canShare) ys.push(height - u(52) - SAFE.bottom)
@@ -90,7 +116,7 @@ export default class GradeOverlay extends Phaser.Scene {
     pill(ys[3]!, 'Levels', false, () => { this.scene.stop(); playScene.scene.stop(); this.scene.start('select') })
     if (canShare) {
       pill(ys[4]!, 'Share', false, () => {
-        void navigator.share({ text: `Dot Connect ${level.id}: ${grade.percent}% of the best route, ${'★'.repeat(grade.stars)}` }).catch(() => {})
+        void navigator.share({ text: `Dot Connect ${level.id}: ${grade!.percent}% of the best route, ${'★'.repeat(grade!.stars)}` }).catch(() => {})
       })
     }
   }

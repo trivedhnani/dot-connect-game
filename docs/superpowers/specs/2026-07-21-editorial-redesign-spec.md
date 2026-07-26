@@ -53,12 +53,15 @@ below are authoritative and complete — the artifacts are only pictures of them
 - **Home**: centered serif masthead + short ink rule above it + uppercase date; featured
   "Today's puzzle" card (blue circle icon, serif title, → affordance); "CAMPAIGN" eyebrow;
   4-col grid of card tiles (number + tiny stars; locked = 45% opacity lock glyph; current =
-  blue border); help + settings circle buttons clustered bottom-right.
+  blue border); help + settings circle buttons clustered bottom-right. Campaign grid shows
+  max(30, unlocked+1) tiles.
 - **Win card (GradeOverlay)**: full-screen paper takeover (not a floating box): stars stamp
   in (earned = solid `door` color, unearned = hollow), serif "Solved.", "NN% of the
   best-known route" + "X of Y loot" substat, route thumbnail in a card frame, then buttons:
   "Next puzzle" (ink pill, primary), row of ghost buttons Replay / Reveal (token-gated as
-  today) / Levels. Keep existing recordResult/reveal-token mechanics unchanged.
+  today) / Levels. Keep existing recordResult/reveal-token mechanics unchanged. Loss variant:
+  hollow hearts + 'Out of lives.' + Try again / token-gated Reveal / Levels (no recordResult,
+  no Share).
 - **How to play**: serif title, one-line sub, then a dot GLOSSARY (icon left, bold term +
   short text right, hairline separators): start(green)&exit(ink ring) / loot ("never needed
   to finish — but most of your score") / doors (hollow when opened; last spend flips rest

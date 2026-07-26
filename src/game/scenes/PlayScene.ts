@@ -158,10 +158,10 @@ export default class PlayScene extends Phaser.Scene {
     this.hudBits.push(this.iconButton(u(46), by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } })))
     this.hudBits.push(this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') }))
     this.hudBits.push(this.iconButton(width - u(46), by, '↻', () => {
-      if ((this.round.status !== 'playing' && this.round.status !== 'won') || this.unwinding || this.rewindAnim !== null) return
+      if ((this.round.status !== 'playing' && this.round.status !== 'won' && this.round.status !== 'lost') || this.unwinding || this.rewindAnim !== null) return
       track('level_restart', { id: this.level.id })
       sfx.brush(); haptic.restart()
-      if (this.round.status === 'won') {
+      if (this.round.status === 'won' || this.round.status === 'lost') {
         this.scene.stop('grade'); this.scene.restart({ level: this.level } as never)
       } else {
         if (REDUCED) { this.scene.restart({ level: this.level } as never); return }
@@ -312,7 +312,8 @@ export default class PlayScene extends Phaser.Scene {
 
   private onLost() {
     track('level_lost', { id: this.level.id })
-    this.time.delayedCall(700, () => { this.scene.restart({ level: this.level } as never) })
+    this.inputLocked = true
+    this.time.delayedCall(600, () => { this.scene.launch('grade', { level: this.level, playScene: this, lost: true }) })
   }
 
   showBenchmark() { this.benchmarkShown = true; this.redraw(this.time.now) }

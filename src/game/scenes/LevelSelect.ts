@@ -45,13 +45,23 @@ export default class LevelSelect extends Phaser.Scene {
     // campaign eyebrow + tile grid — a centered content column, always 4 cols, scrollable
     this.add.text(colX, u(164) + SAFE.top, 'CAMPAIGN', { fontFamily: F.sans, fontSize: `${u(11)}px`, color: CS.sub, letterSpacing: u(2), resolution: TEXT_RESOLUTION })
     const cols = 4
-    const rows = Math.ceil(data.campaign.length / cols)
+    // owner: cap the visible list rather than render the whole (potentially huge) campaign —
+    // shows the next 30 tiles, growing the window once progress passes level 29 so the next
+    // locked level is always visible.
+    let unlockedCount = 0
+    for (let i = 0; i < data.campaign.length; i++) {
+      const unlocked = i === 0 || (progress.stars[data.campaign[i - 1]!.id] ?? 0) >= 1
+      if (unlocked) unlockedCount++
+      else break
+    }
+    const visibleCampaign = data.campaign.slice(0, Math.max(30, unlockedCount + 1))
+    const rows = Math.ceil(visibleCampaign.length / cols)
     const tile = (colW - (cols - 1) * u(10)) / cols
     const gridChildren: Phaser.GameObjects.GameObject[] = []
     const lockG = this.add.graphics()
     lockG.lineStyle(u(2), C.loot, 1)
     lockG.fillStyle(C.loot, 1)
-    data.campaign.forEach((level, i) => {
+    visibleCampaign.forEach((level, i) => {
       const x = colX + (i % cols) * (tile + u(10)) + tile / 2
       const y = u(196) + SAFE.top + Math.floor(i / cols) * (tile + u(10)) + tile / 2
       const starsEarned = progress.stars[level.id] ?? 0

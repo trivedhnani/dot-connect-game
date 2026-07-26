@@ -39,6 +39,7 @@ export default class PlayScene extends Phaser.Scene {
   private noteText!: Phaser.GameObjects.Text
   private dragging = false
   private benchmarkShown = false
+  private hudBits: Phaser.GameObjects.GameObject[] = []
   private headX = 0
   private headY = 0
   private pops = new Map<string, number>()
@@ -89,9 +90,17 @@ export default class PlayScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.dragging = true; this.onPointer(p) })
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.dragging) this.onPointer(p) })
     this.input.on('pointerup', () => { this.dragging = false })
-    const handler = () => this.redraw(this.time.now)
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null
+    const handler = () => {
+      this.redraw(this.time.now)
+      if (resizeTimer) clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => this.buildHud(), 150) // re-anchor HUD after the resize settles
+    }
     this.scale.on('resize', handler)
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off('resize', handler))
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (resizeTimer) clearTimeout(resizeTimer)
+      this.scale.off('resize', handler)
+    })
     track('level_start', { id: this.level.id })
 
     // level intro: dots pop in group by group (grays, reds, doors, start/exit); tap skips
@@ -125,6 +134,8 @@ export default class PlayScene extends Phaser.Scene {
   }
 
   private buildHud() {
+    this.hudBits.forEach((o) => o.destroy())
+    this.hudBits = []
     const { width, height } = this.scale
     const fs = width < u(520) ? 15 : 17
     this.hudLevel = this.add.text(u(18), u(14) + SAFE.top, `No. ${this.level.id.replace(/^\D+0?/, '')}`, {
@@ -140,11 +151,13 @@ export default class PlayScene extends Phaser.Scene {
     this.noteText = this.add.text(width / 2, height - u(96) - SAFE.bottom, 'DOORS SEALED', {
       fontFamily: F.sans, fontSize: `${u(12)}px`, color: CS.sub, resolution: TEXT_RESOLUTION, letterSpacing: u(2),
     }).setOrigin(0.5).setAlpha(0)
+    this.noteText.setAlpha(this.round.flipped ? 1 : 0)
+    this.hudBits.push(this.hudLevel, this.hudHearts, this.hudChipText, this.hudChipDot, this.hudRule, this.noteText)
     // thumb bar: ? ⌂ ↻
     const by = height - u(44) - SAFE.bottom
-    this.iconButton(u(46), by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } }))
-    this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') })
-    this.iconButton(width - u(46), by, '↻', () => {
+    this.hudBits.push(this.iconButton(u(46), by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } })))
+    this.hudBits.push(this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') }))
+    this.hudBits.push(this.iconButton(width - u(46), by, '↻', () => {
       if ((this.round.status !== 'playing' && this.round.status !== 'won') || this.unwinding || this.rewindAnim !== null) return
       track('level_restart', { id: this.level.id })
       sfx.brush(); haptic.restart()
@@ -165,7 +178,7 @@ export default class PlayScene extends Phaser.Scene {
           onComplete: () => this.scene.restart({ level: this.level } as never),
         })
       }
-    })
+    }))
     this.syncHud()
   }
 

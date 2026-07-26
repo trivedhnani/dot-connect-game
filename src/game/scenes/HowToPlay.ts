@@ -84,5 +84,14 @@ export default class HowToPlay extends Phaser.Scene {
     }).setOrigin(0.5)
     pill.setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.scene.start(data.next === 'play' ? 'play' : 'select', data.nextData ?? {}))
+
+    // stateless scene: a settled resize just rebuilds it at the new size
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const onResize = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => this.scene.restart(data), 150) }
+    this.scale.on('resize', onResize)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (timer) clearTimeout(timer)
+      this.scale.off('resize', onResize)
+    })
   }
 }

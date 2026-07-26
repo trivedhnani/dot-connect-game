@@ -113,6 +113,19 @@ export default class LevelSelect extends Phaser.Scene {
         this.scene.start('help', { next: 'select' })
       }
     } catch { /* ignore */ }
+
+    this.restartOnResize()
+  }
+
+  // stateless scene: a settled resize just rebuilds it at the new size
+  private restartOnResize() {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const onResize = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => this.scene.restart(), 150) }
+    this.scale.on('resize', onResize)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (timer) clearTimeout(timer)
+      this.scale.off('resize', onResize)
+    })
   }
 
   private iconButton(x: number, y: number, glyph: string, onTap: () => void) {

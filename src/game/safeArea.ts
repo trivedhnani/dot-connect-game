@@ -31,5 +31,11 @@ function remeasure(): void {
 if (typeof window !== 'undefined') {
   window.addEventListener('load', remeasure)
   window.addEventListener('orientationchange', () => setTimeout(remeasure, 100))
-  setTimeout(remeasure, 300) // WKWebView often settles insets shortly after boot
+  // WKWebView reports env() as 0 for an unpredictable stretch after boot — poll until
+  // real insets appear (or give up after ~3s; devices without notches never report any).
+  let tries = 0
+  const poll = setInterval(() => {
+    remeasure()
+    if (++tries >= 20 || SAFE.top > 0 || SAFE.bottom > 0) clearInterval(poll)
+  }, 150)
 }

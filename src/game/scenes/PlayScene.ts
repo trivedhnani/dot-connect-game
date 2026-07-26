@@ -6,6 +6,7 @@ import type { Level, Pos, RoundState } from '../../engine/types'
 import { track } from '../analytics'
 import { TEXT_RESOLUTION } from '../ui'
 import { C, CS, F, T, REDUCED, u } from '../theme'
+import { SAFE } from '../safeArea'
 import { sfx } from '../sfx'
 import { haptic } from '../haptics'
 
@@ -46,6 +47,7 @@ export default class PlayScene extends Phaser.Scene {
   private doorDrains = new Map<string, number>()
   private flipFades = new Map<string, number>()
   private redPulse: { key: string; t0: number } | null = null
+  private redCellFlash: { key: string; t0: number } | null = null
   private rewindAnim: { cells: Pos[]; t0: number } | null = null
   private intro: { t0: number } | null = null
   private introDelay = new Map<string, number>()
@@ -73,6 +75,7 @@ export default class PlayScene extends Phaser.Scene {
     this.doorDrains = new Map()
     this.flipFades = new Map()
     this.redPulse = null
+    this.redCellFlash = null
     this.rewindAnim = null
     this.sweep = null
     this.inputLocked = false
@@ -124,21 +127,21 @@ export default class PlayScene extends Phaser.Scene {
   private buildHud() {
     const { width, height } = this.scale
     const fs = width < u(520) ? 15 : 17
-    this.hudLevel = this.add.text(u(18), u(14), `No. ${this.level.id.replace(/^\D+0?/, '')}`, {
+    this.hudLevel = this.add.text(u(18), u(14) + SAFE.top, `No. ${this.level.id.replace(/^\D+0?/, '')}`, {
       fontFamily: F.serif, fontStyle: 'italic', fontSize: `${u(fs)}px`, color: CS.ink, resolution: TEXT_RESOLUTION,
     })
-    this.hudHearts = this.add.text(width / 2, u(14), '', { fontSize: `${u(fs - 2)}px`, color: CS.hazard, resolution: TEXT_RESOLUTION }).setOrigin(0.5, 0)
+    this.hudHearts = this.add.text(width / 2, u(14) + SAFE.top, '', { fontSize: `${u(fs - 2)}px`, color: CS.hazard, resolution: TEXT_RESOLUTION }).setOrigin(0.5, 0)
     // chip: hairline pill + yellow ringed dot + count
     const chipX = width - u(18)
-    this.hudChipText = this.add.text(chipX, u(15), '× 0', { fontFamily: F.sans, fontSize: `${u(fs - 4)}px`, fontStyle: 'bold', color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(1, 0)
+    this.hudChipText = this.add.text(chipX, u(15) + SAFE.top, '× 0', { fontFamily: F.sans, fontSize: `${u(fs - 4)}px`, fontStyle: 'bold', color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(1, 0)
     this.hudChipDot = this.add.graphics()
     this.hudRule = this.add.graphics()
-    this.hudRule.lineStyle(u(1), C.hair, 1).lineBetween(0, u(44), width, u(44))
-    this.noteText = this.add.text(width / 2, height - u(96), 'DOORS SEALED', {
+    this.hudRule.lineStyle(u(1), C.hair, 1).lineBetween(0, u(44) + SAFE.top, width, u(44) + SAFE.top)
+    this.noteText = this.add.text(width / 2, height - u(96) - SAFE.bottom, 'DOORS SEALED', {
       fontFamily: F.sans, fontSize: `${u(12)}px`, color: CS.sub, resolution: TEXT_RESOLUTION, letterSpacing: u(2),
     }).setOrigin(0.5).setAlpha(0)
     // thumb bar: ? ⌂ ↻
-    const by = height - u(44)
+    const by = height - u(44) - SAFE.bottom
     this.iconButton(u(46), by, '?', () => this.scene.start('help', { next: 'play', nextData: { level: this.level } }))
     this.iconButton(width / 2, by, '⌂', () => { this.scene.stop('grade'); this.scene.start('select') })
     this.iconButton(width - u(46), by, '↻', () => {
@@ -182,7 +185,7 @@ export default class PlayScene extends Phaser.Scene {
     this.hudHearts.setText('♥'.repeat(lives) + '♡'.repeat(this.round.level.lives - lives))
     const left = this.round.level.yellowBudget - this.round.yellowsUsed
     this.hudChipText.setText(`× ${Math.max(0, left)}`)
-    const dotX = this.hudChipText.getBounds().left - u(14), dotY = u(15) + this.hudChipText.height / 2
+    const dotX = this.hudChipText.getBounds().left - u(14), dotY = u(15) + SAFE.top + this.hudChipText.height / 2
     this.hudChipDot.clear()
     this.hudChipDot.fillStyle(C.door, 1).fillCircle(dotX, dotY, u(5.5))
     this.hudChipDot.lineStyle(u(2), C.door, 0.45).strokeCircle(dotX, dotY, u(8))
@@ -191,9 +194,9 @@ export default class PlayScene extends Phaser.Scene {
   private layout() {
     const { width, height } = this.scale
     const size = this.level.size
-    const cell = Math.floor(Math.min(width - u(28), height - u(160)) / (size + 1))
+    const cell = Math.floor(Math.min(width - u(28), height - u(160) - SAFE.top - SAFE.bottom) / (size + 1))
     const ox = Math.floor((width - cell * size) / 2)
-    const oy = u(56) + Math.floor((height - u(146) - cell * size) / 2)
+    const oy = u(56) + SAFE.top + Math.floor((height - u(146) - SAFE.top - SAFE.bottom - cell * size) / 2)
     return { cell, ox, oy, size }
   }
 
@@ -267,6 +270,7 @@ export default class PlayScene extends Phaser.Scene {
     if (res.kind === 'red-hit') {
       sfx.thud(); haptic.red()
       this.redPulse = { key: pos.r + ',' + pos.c, t0: this.time.now }
+      this.redCellFlash = { key: pos.r + ',' + pos.c, t0: this.time.now }
       // a red-hit truncates the path independently of any pending drag-undo ghost; drop it
       this.retractCells = []
       this.retractLen = 0
@@ -364,6 +368,15 @@ export default class PlayScene extends Phaser.Scene {
       g.fillRoundedRect(cx - w / 2, cardCy + u(2) - w / 2, w, w, u(11))
       g.fillStyle(C.card, 1)
       g.fillRoundedRect(cx - w / 2, cardCy - w / 2, w, w, u(11))
+      if (this.redCellFlash && key === this.redCellFlash.key) {
+        const flashT = (now - this.redCellFlash.t0) / 320
+        if (flashT < 1) {
+          g.fillStyle(C.hazard, 0.5 * (1 - flashT))
+          g.fillRoundedRect(cx - w / 2, cardCy - w / 2, w, w, u(11))
+        } else {
+          this.redCellFlash = null
+        }
+      }
       const base = this.round.cells[r]![c]!
       const eff = effectiveKind(this.round, p)
       const activated = base === 'yellow' && eff === 'empty'

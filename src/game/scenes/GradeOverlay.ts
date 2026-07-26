@@ -8,6 +8,7 @@ import { track } from '../analytics'
 import type PlayScene from './PlayScene'
 import { TEXT_RESOLUTION } from '../ui'
 import { C, CS, F, T, REDUCED, u } from '../theme'
+import { SAFE } from '../safeArea'
 import { sfx } from '../sfx'
 import levelsJson from '../../levels/levels.json'
 
@@ -26,7 +27,7 @@ export default class GradeOverlay extends Phaser.Scene {
     this.add.rectangle(0, 0, width * 2, height * 2, C.paper, 1).setOrigin(0).setInteractive()
 
     // stars stamp in, staggered
-    const starY = height * 0.16
+    const starY = height * 0.16 + SAFE.top
     for (let i = 0; i < 3; i++) {
       const earned = i < grade.stars
       const star = this.add.text(cx + (i - 1) * u(44), starY, earned ? '★' : '☆', {
@@ -74,8 +75,8 @@ export default class GradeOverlay extends Phaser.Scene {
       ? campaignData.campaign[campaignIdx + 1]!
       : null
 
-    const ys = [height - u(260), height - u(208), height - u(156), height - u(104)]
-    if (canShare) ys.push(height - u(52))
+    const ys = [height - u(260) - SAFE.bottom, height - u(208) - SAFE.bottom, height - u(156) - SAFE.bottom, height - u(104) - SAFE.bottom]
+    if (canShare) ys.push(height - u(52) - SAFE.bottom)
 
     pill(ys[0]!, 'Next puzzle', true, () => {
       this.scene.stop(); playScene.scene.stop()

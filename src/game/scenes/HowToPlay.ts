@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { TEXT_RESOLUTION } from '../ui'
 import { C, CS, F, u } from '../theme'
+import { SAFE } from '../safeArea'
 
 type GlossaryDot = 'go' | 'loot' | 'door' | 'mid' | 'hazard' | 'grade'
 
@@ -29,10 +30,10 @@ export default class HowToPlay extends Phaser.Scene {
     // full paper takeover — guarantees coverage over whatever scene was showing before
     this.add.rectangle(0, 0, width, height, C.paper).setOrigin(0)
 
-    this.add.text(cx, u(48), 'How to play', {
+    this.add.text(cx, u(48) + SAFE.top, 'How to play', {
       fontFamily: F.serif, fontSize: `${u(22)}px`, color: CS.ink, resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5)
-    this.add.text(cx, u(76), 'One line, start to exit. Your trail is a wall.', {
+    this.add.text(cx, u(76) + SAFE.top, 'One line, start to exit. Your trail is a wall.', {
       fontFamily: F.sans, fontSize: `${u(12.5)}px`, color: CS.sub, resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5)
 
@@ -41,7 +42,7 @@ export default class HowToPlay extends Phaser.Scene {
     const iconCx = u(40)
     const textX = u(68)
     const wrapWidth = Math.min(u(430), width - u(110))
-    let y = u(150)
+    let y = u(150) + SAFE.top
 
     for (const row of ROWS) {
       const desc = this.add.text(textX, y + u(24), row.desc, {
@@ -76,7 +77,7 @@ export default class HowToPlay extends Phaser.Scene {
 
     // "Got it — play" pill
     const pillW = Math.min(u(300), width - u(52))
-    const pillY = height - u(64)
+    const pillY = height - u(64) - SAFE.bottom
     const pill = this.add.rectangle(cx, pillY, pillW, u(44), C.ink)
     this.add.text(cx, pillY, 'Got it — play', {
       fontFamily: F.sans, fontSize: `${u(15)}px`, fontStyle: 'bold', color: CS.paper, resolution: TEXT_RESOLUTION,

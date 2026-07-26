@@ -17,7 +17,7 @@ export const T = {
   redPulse: 160, heartFade: 200, rewindPerCell: 110,
   sweep: 500, starStagger: 150, solvedFade: 300,
   introGroup: 140, introWithin: 45, introDot: 220, introLead: 100,
-  unwind: 250, headSpringMs: 90, retractPerCell: 100,
+  unwind: 250, headSpringMs: 50, retractPerCell: 80,
 } as const
 export const REDUCED: boolean =
   typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches

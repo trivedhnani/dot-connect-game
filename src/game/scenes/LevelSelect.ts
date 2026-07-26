@@ -6,6 +6,7 @@ import { dailyIndex, todayKey } from '../daily'
 import { track } from '../analytics'
 import { TEXT_RESOLUTION } from '../ui'
 import { C, CS, F, u } from '../theme'
+import { SAFE } from '../safeArea'
 import { getSound, setSound, getHaptics, setHaptics } from '../settings'
 
 const data = levelsJson as unknown as { campaign: Level[]; daily: Level[] }
@@ -24,25 +25,25 @@ export default class LevelSelect extends Phaser.Scene {
     const colX = (width - colW) / 2
 
     // masthead
-    this.add.rectangle(cx, u(30), u(46), u(2), C.ink)
-    this.add.text(cx, u(52), 'Dot Connect', { fontFamily: F.serif, fontSize: narrow ? `${u(24)}px` : `${u(28)}px`, color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
+    this.add.rectangle(cx, u(30) + SAFE.top, u(46), u(2), C.ink)
+    this.add.text(cx, u(52) + SAFE.top, 'Dot Connect', { fontFamily: F.serif, fontSize: narrow ? `${u(24)}px` : `${u(28)}px`, color: CS.ink, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
     const date = new Date()
-    this.add.text(cx, u(78), date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase(),
+    this.add.text(cx, u(78) + SAFE.top, date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase(),
       { fontFamily: F.sans, fontSize: `${u(11)}px`, color: CS.sub, letterSpacing: u(2), resolution: TEXT_RESOLUTION }).setOrigin(0.5)
 
     // daily card
     const idx = dailyIndex(todayKey(new Date()), data.daily.length)
     const dailyLevel = data.daily[idx]!
     const cardW = Math.min(u(360), width - u(36))
-    const daily = this.add.rectangle(cx, u(122), cardW, u(58), C.card).setStrokeStyle(u(1), C.hair)
-    this.add.circle(cx - cardW / 2 + u(32), u(122), u(17), C.line)
-    this.add.text(cx - cardW / 2 + u(58), u(112), "Today's puzzle", { fontFamily: F.serif, fontSize: `${u(15)}px`, color: CS.ink, resolution: TEXT_RESOLUTION })
-    this.add.text(cx - cardW / 2 + u(58), u(131), 'A fresh line, once a day', { fontFamily: F.sans, fontSize: `${u(12)}px`, color: CS.sub, resolution: TEXT_RESOLUTION })
-    this.add.text(cx + cardW / 2 - u(22), u(122), '→', { fontSize: `${u(18)}px`, color: CS.line, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
+    const daily = this.add.rectangle(cx, u(122) + SAFE.top, cardW, u(58), C.card).setStrokeStyle(u(1), C.hair)
+    this.add.circle(cx - cardW / 2 + u(32), u(122) + SAFE.top, u(17), C.line)
+    this.add.text(cx - cardW / 2 + u(58), u(112) + SAFE.top, "Today's puzzle", { fontFamily: F.serif, fontSize: `${u(15)}px`, color: CS.ink, resolution: TEXT_RESOLUTION })
+    this.add.text(cx - cardW / 2 + u(58), u(131) + SAFE.top, 'A fresh line, once a day', { fontFamily: F.sans, fontSize: `${u(12)}px`, color: CS.sub, resolution: TEXT_RESOLUTION })
+    this.add.text(cx + cardW / 2 - u(22), u(122) + SAFE.top, '→', { fontSize: `${u(18)}px`, color: CS.line, resolution: TEXT_RESOLUTION }).setOrigin(0.5)
     daily.setInteractive({ useHandCursor: true }).on('pointerdown', () => { track('daily_start', { id: dailyLevel.id }); this.scene.start('play', { level: dailyLevel }) })
 
     // campaign eyebrow + tile grid — a centered content column, always 4 cols, scrollable
-    this.add.text(colX, u(164), 'CAMPAIGN', { fontFamily: F.sans, fontSize: `${u(11)}px`, color: CS.sub, letterSpacing: u(2), resolution: TEXT_RESOLUTION })
+    this.add.text(colX, u(164) + SAFE.top, 'CAMPAIGN', { fontFamily: F.sans, fontSize: `${u(11)}px`, color: CS.sub, letterSpacing: u(2), resolution: TEXT_RESOLUTION })
     const cols = 4
     const rows = Math.ceil(data.campaign.length / cols)
     const tile = (colW - (cols - 1) * u(10)) / cols
@@ -52,7 +53,7 @@ export default class LevelSelect extends Phaser.Scene {
     lockG.fillStyle(C.loot, 1)
     data.campaign.forEach((level, i) => {
       const x = colX + (i % cols) * (tile + u(10)) + tile / 2
-      const y = u(196) + Math.floor(i / cols) * (tile + u(10)) + tile / 2
+      const y = u(196) + SAFE.top + Math.floor(i / cols) * (tile + u(10)) + tile / 2
       const starsEarned = progress.stars[level.id] ?? 0
       const unlocked = i === 0 || (progress.stars[data.campaign[i - 1]!.id] ?? 0) >= 1
       const isCurrent = unlocked && starsEarned === 0
@@ -85,16 +86,16 @@ export default class LevelSelect extends Phaser.Scene {
     const gridContainer = this.add.container(0, 0, gridChildren)
     const maskShape = this.make.graphics({}, false)
     maskShape.fillStyle(0xffffff)
-    maskShape.fillRect(0, u(170), this.scale.width, this.scale.height - u(170))
+    maskShape.fillRect(0, u(170) + SAFE.top, this.scale.width, this.scale.height - u(170) - SAFE.top)
     gridContainer.setMask(maskShape.createGeometryMask())
 
     // vertical scroll: drag or wheel over the grid area, clamped so content never scrolls past its bounds
-    const contentBottom = u(196) + (rows - 1) * (tile + u(10)) + tile
-    const minY = Math.min(0, (height - u(120)) - contentBottom)
+    const contentBottom = u(196) + SAFE.top + (rows - 1) * (tile + u(10)) + tile
+    const minY = Math.min(0, (height - u(120) - SAFE.bottom) - contentBottom)
     let lastY = 0
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => { lastY = pointer.y })
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (!pointer.isDown || pointer.downY <= u(170)) return
+      if (!pointer.isDown || pointer.downY <= u(170) + SAFE.top) return
       gridContainer.y = Phaser.Math.Clamp(gridContainer.y + (pointer.y - lastY), minY, 0)
       lastY = pointer.y
     })
@@ -103,8 +104,8 @@ export default class LevelSelect extends Phaser.Scene {
     })
 
     // bottom-right cluster
-    this.iconButton(width - u(104), height - u(44), '?', () => this.scene.start('help', { next: 'select' }))
-    this.iconButton(width - u(46), height - u(44), '⚙', () => this.toggleSettingsPopup())
+    this.iconButton(width - u(104), height - u(44) - SAFE.bottom, '?', () => this.scene.start('help', { next: 'select' }))
+    this.iconButton(width - u(46), height - u(44) - SAFE.bottom, '⚙', () => this.toggleSettingsPopup())
 
     try {
       if (!localStorage.getItem('dot-connect-seen-help-v1')) {
@@ -129,7 +130,7 @@ export default class LevelSelect extends Phaser.Scene {
     }
     const { width, height } = this.scale
     const popupW = u(200), popupH = u(96)
-    const px = width - u(46) - popupW / 2, py = height - u(44) - u(24) - popupH / 2
+    const px = width - u(46) - popupW / 2, py = height - u(44) - SAFE.bottom - u(24) - popupH / 2
 
     const shield = this.add.rectangle(0, 0, width, height, 0x000000, 0.001)
       .setOrigin(0).setInteractive().on('pointerdown', () => this.toggleSettingsPopup())

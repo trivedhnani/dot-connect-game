@@ -119,6 +119,16 @@ export default class PlayScene extends Phaser.Scene {
     this.redraw(this.time.now)
   }
 
+  // Idempotent: whichever of the render loop / completion timer finishes the rewind first,
+  // the input lock is released exactly when the player may act again (never on loss/win/unwind,
+  // whose own flows keep the lock).
+  private endRewind() {
+    this.rewindAnim = null
+    if (this.round.status === 'playing' && !this.unwinding && !this.sweep && !this.intro) {
+      this.inputLocked = false
+    }
+  }
+
   update(time: number, delta: number) {
     const tip = this.round.path[this.round.path.length - 1]!
     const [tx, ty] = this.center(tip)
@@ -292,7 +302,7 @@ export default class PlayScene extends Phaser.Scene {
       this.rewindAnim = { cells: removed, t0: this.time.now }
       this.inputLocked = true
       removed.forEach((_, i) => this.time.delayedCall(i * T.rewindPerCell, () => sfx.tickDown(removed.length - i)))
-      this.time.delayedCall(removed.length * T.rewindPerCell, () => { if (this.rewindAnim) { this.rewindAnim = null; this.inputLocked = false } })
+      this.time.delayedCall(removed.length * T.rewindPerCell, () => this.endRewind())
       this.dragging = false
     }
     if (res.kind === 'won') this.onWon()
@@ -470,12 +480,11 @@ export default class PlayScene extends Phaser.Scene {
       let ghostLen = 0
       if (this.rewindAnim) {
         if (REDUCED) {
-          // REDUCED: tail retreat is movement — skip it, path already reflects the truncated
-          // state; onPointer's delayedCall still clears rewindAnim (and inputLocked) on schedule
+          // REDUCED: tail retreat is movement — skip it; the delayedCall ends the rewind on schedule
         } else {
           const elapsed = now - this.rewindAnim.t0
           const tailLen = Math.max(0, this.rewindAnim.cells.length - elapsed / T.rewindPerCell)
-          if (tailLen <= 0) this.rewindAnim = null
+          if (tailLen <= 0) this.endRewind()
           else { ghostCells = this.rewindAnim.cells; ghostLen = tailLen }
         }
       } else if (!REDUCED && this.retractLen > 0.05) {

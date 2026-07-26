@@ -10,7 +10,26 @@ function cssEnv(name: string): number {
   el.remove()
   return v
 }
+
+// Scenes read SAFE.top/bottom at create() time. WKWebView can report env() as 0 until
+// the first layout pass, so we re-measure after load/resize and, if the values changed,
+// fire a window resize so live scenes re-anchor (they all listen for it).
 export const SAFE = {
   top: u(cssEnv('safe-area-inset-top')),
   bottom: u(cssEnv('safe-area-inset-bottom')),
+}
+
+function remeasure(): void {
+  const top = u(cssEnv('safe-area-inset-top'))
+  const bottom = u(cssEnv('safe-area-inset-bottom'))
+  if (top === SAFE.top && bottom === SAFE.bottom) return
+  SAFE.top = top
+  SAFE.bottom = bottom
+  window.dispatchEvent(new Event('resize'))
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', remeasure)
+  window.addEventListener('orientationchange', () => setTimeout(remeasure, 100))
+  setTimeout(remeasure, 300) // WKWebView often settles insets shortly after boot
 }

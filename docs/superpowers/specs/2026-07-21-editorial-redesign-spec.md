@@ -58,9 +58,10 @@ below are authoritative and complete — the artifacts are only pictures of them
 - **Win card (GradeOverlay)**: full-screen paper takeover (not a floating box): stars stamp
   in (earned = solid `door` color, unearned = hollow), serif "Solved.", "NN% of the
   best-known route" + "X of Y loot" substat, route thumbnail in a card frame, then buttons:
-  "Next puzzle" (ink pill, primary), row of ghost buttons Replay / Reveal (token-gated as
-  today) / Levels. Keep existing recordResult/reveal-token mechanics unchanged. Loss variant:
-  hollow hearts + 'Out of lives.' + Try again / token-gated Reveal / Levels (no recordResult,
+  "Next puzzle" (ink pill, primary), row of ghost buttons Replay / Reveal / Levels.
+  Reveal is FREE everywhere (owner decision 2026-07-26); the token plumbing in storage.ts
+  is retained as the future rewarded-ad gate. Loss variant:
+  hollow hearts + 'Out of lives.' + Try again / free Reveal / Levels (no recordResult,
   no Share).
 - **How to play**: serif title, one-line sub, then a dot GLOSSARY (icon left, bold term +
   short text right, hairline separators): start(green)&exit(ink ring) / loot ("never needed

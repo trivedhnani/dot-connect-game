@@ -3,7 +3,7 @@ import type { Grade } from '../../engine/grading'
 import type { Level, Pos } from '../../engine/types'
 import { effectiveKind } from '../../engine/round'
 import { samePos } from '../../engine/board'
-import { loadProgress, recordResult, spendRevealToken } from '../storage'
+import { recordResult } from '../storage'
 import { track } from '../analytics'
 import type PlayScene from './PlayScene'
 import { TEXT_RESOLUTION } from '../ui'
@@ -82,8 +82,8 @@ export default class GradeOverlay extends Phaser.Scene {
       }).setOrigin(0.5)
     }
 
-    const freeReveal = !lost && grade!.percent >= 95
-    const tokens = loadProgress().revealTokens
+    // Reveal is free for now (owner decision 2026-07-26). The token plumbing in storage.ts
+    // stays — it becomes the rewarded-ad gate when monetization lands.
     let canShare = false
     try { canShare = typeof (globalThis.navigator as Navigator | undefined)?.share === 'function' } catch { canShare = false }
     const campaignIdx = campaignData.campaign.findIndex((l) => l.id === level.id)
@@ -94,8 +94,8 @@ export default class GradeOverlay extends Phaser.Scene {
     if (lost) {
       const ys = [height - u(208) - SAFE.bottom, height - u(156) - SAFE.bottom, height - u(104) - SAFE.bottom]
       pill(ys[0]!, 'Try again', true, () => { this.scene.stop(); playScene.scene.restart({ level } as never) })
-      pill(ys[1]!, `Reveal best path (${tokens} left)`, false, () => {
-        if (spendRevealToken()) { track('reveal_used', { id: level.id }); playScene.showBenchmark(); this.scene.stop() }
+      pill(ys[1]!, 'Reveal best path', false, () => {
+        track('reveal_used', { id: level.id }); playScene.showBenchmark(); this.scene.stop()
       })
       pill(ys[2]!, 'Levels', false, () => { this.scene.stop(); playScene.scene.stop(); this.scene.start('select') })
       return
@@ -109,8 +109,8 @@ export default class GradeOverlay extends Phaser.Scene {
       if (nextLevel) this.scene.start('play', { level: nextLevel })
       else this.scene.start('select')
     })
-    pill(ys[1]!, freeReveal ? 'Reveal best path (free)' : `Reveal best path (${tokens} left)`, false, () => {
-      if (freeReveal || spendRevealToken()) { track('reveal_used', { id: level.id }); playScene.showBenchmark(); this.scene.stop() }
+    pill(ys[1]!, 'Reveal best path', false, () => {
+      track('reveal_used', { id: level.id }); playScene.showBenchmark(); this.scene.stop()
     })
     pill(ys[2]!, 'Replay', false, () => { this.scene.stop(); playScene.scene.restart({ level } as never) })
     pill(ys[3]!, 'Levels', false, () => { this.scene.stop(); playScene.scene.stop(); this.scene.start('select') })
